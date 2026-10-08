@@ -1,0 +1,14 @@
+{
+  "appId": "dev.filedeck.app",
+  "appName": "FileDeck",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css"
+    }
+  },
+  "backgroundColor": "#12161c"
+}

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Разрешаем FileProvider отдавать любые файлы устройства (внутренняя память и SD-карты),
+     чтобы открывать их во внешних приложениях и делиться ими. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <root-path name="root" path="/" />
+    <external-path name="external" path="." />
+    <cache-path name="cache" path="." />
+</paths>

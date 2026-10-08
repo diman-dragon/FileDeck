@@ -1,0 +1,63 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: веб-превью в браузере",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Web: собрать (vite build)",
+      "type": "shell",
+      "command": "npm run build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: синхронизировать (build + cap sync)",
+      "type": "shell",
+      "command": "npm run sync",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: собрать debug APK",
+      "type": "shell",
+      "command": "npm run apk",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: собрать release APK",
+      "type": "shell",
+      "command": "npm run apk:release",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: установить APK на телефон (adb)",
+      "type": "shell",
+      "command": "npm run install:device",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: собрать и запустить на устройстве",
+      "type": "shell",
+      "command": "npm run run:device",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: открыть в Android Studio",
+      "type": "shell",
+      "command": "npm run open:studio",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: очистить сборку",
+      "type": "shell",
+      "command": "npm run clean",
+      "problemMatcher": []
+    }
+  ]
+}

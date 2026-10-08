@@ -1,0 +1,18 @@
+{
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "files.eol": "\n",
+  "files.exclude": {
+    "**/.gradle": true,
+    "android/app/build": true,
+    "android/build": true
+  },
+  "search.exclude": {
+    "dist": true,
+    "node_modules": true,
+    "android/app/src/main/assets/public": true,
+    "android/app/build": true
+  },
+  "[java]": { "editor.tabSize": 4 },
+  "java.configuration.updateBuildConfiguration": "automatic"
+}
