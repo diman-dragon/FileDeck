@@ -4,17 +4,23 @@ import { FM, fileUrl, isNative } from './plugin.js';
 import { icon, folderGlyph } from './icons.js';
 import { toast, sheet, confirmDialog, promptDialog, infoDialog, handleBack, hasLayers } from './layers.js';
 import { openImageViewer, openEditor } from './viewer.js';
+import { openSettings } from './settings.js';
 import {
   basename, parentOf, join, escapeHtml, formatSize, formatDate, kindOf, extOf, sortEntries,
   KIND_ICON, KIND_LABEL, isEditable, debounce,
 } from './utils.js';
 
+const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
+const APP_BUILD = typeof __APP_BUILD__ === 'number' ? __APP_BUILD__ : 0;
+
 // ------------------------------------------------------------------ состояние
 const PREFS_KEY = 'filedeck.prefs.v1';
 const prefs = Object.assign(
-  { view: 'list', sortBy: 'name', desc: false, hidden: false, theme: 'auto' },
+  { view: 'list', sortBy: 'name', desc: false, hidden: false, theme: 'auto', confirmDelete: true, start: 'home' },
   (() => { try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; } })()
 );
+if (prefs.theme === 'dark') prefs.theme = 'amoled'; // миграция со старой версии
+const DEFAULTS = JSON.stringify(Object.assign({}, prefs, { view: 'list', sortBy: 'name', desc: false, hidden: false, theme: 'auto', confirmDelete: true, start: 'home' }));
 const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ } };
 
 const S = {
@@ -29,6 +35,7 @@ const S = {
   search: null,        // { q, results, loading, truncated }
   chunk: 240,
   scrollMemo: new Map(),
+  lastIn: {},          // последняя открытая папка на каждом накопителе
 };
 
 const $ = (id) => document.getElementById(id);
@@ -60,12 +67,11 @@ function currentList() {
 let viewCache = [];
 
 // ------------------------------------------------------------------ тема
+const resolveTheme = () => (prefs.theme === 'auto' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'amoled') : prefs.theme);
 export function applyTheme() {
-  const t = prefs.theme;
-  if (t === 'auto') delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = t;
-  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  if (isNative) SystemBars.setStyle({ style: dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light }).catch(() => {});
+  const t = resolveTheme();
+  document.documentElement.dataset.theme = t;
+  if (isNative) SystemBars.setStyle({ style: t === 'light' ? SystemBarsStyle.Light : SystemBarsStyle.Dark }).catch(() => {});
 }
 
 // ------------------------------------------------------------------ загрузка
@@ -83,7 +89,15 @@ async function checkPermission() {
   } catch {
     S.perm = false;
   }
-  if (S.perm) await loadRoots();
+  if (S.perm) {
+    await loadRoots();
+    const first = prefs.start === 'primary' ? primaryRoot() : prefs.start === 'sd' ? S.roots.find((r) => !r.primary) : null;
+    if (first && S.path === null && !S.started) {
+      S.started = true;
+      return go(first.path);
+    }
+    S.started = true;
+  }
   render();
 }
 
@@ -128,6 +142,10 @@ export function go(path) {
   S.selection.clear();
   S.path = path;
   S.entries = [];
+  if (path) {
+    const r = rootOf(path);
+    if (r) S.lastIn[r.path] = path;
+  }
   if (path === null) {
     loadRoots().then(render);
     render();
@@ -164,41 +182,56 @@ export function render({ keepScroll = false } = {}) {
   else if (S.loading) content.scrollTop = 0;
 }
 
+function switchHtml() {
+  const cur = S.path ? rootOf(S.path) : null;
+  const active = cur ? (cur.primary ? 'mem' : 'sd') : '';
+  const hasSd = S.roots.some((r) => !r.primary);
+  const btn = (id, label, ic, dim) =>
+    `<button class="seg${active === id ? ' on' : ''}${dim ? ' off' : ''}" data-act="switch" data-root="${id}" aria-pressed="${active === id}">${icon(ic, 17)}<span>${label}</span></button>`;
+  return `<div class="switch" role="group" aria-label="Накопитель">${btn('mem', 'Память', 'drive', false)}${btn('sd', 'SD-карта', 'sd', S.perm && !hasSd)}</div>`;
+}
+
 function renderTopbar() {
   const n = S.selection.size;
+  const lead = inSearch()
+    ? `<button class="icon-btn" data-act="exit-search" aria-label="Закрыть поиск">${icon('back')}</button>`
+    : S.path && S.perm
+      ? `<button class="icon-btn" data-act="up" aria-label="Наверх">${icon('back')}</button>`
+      : `<span class="brand" aria-label="DataLaw"><i class="brand-d"></i></span>`;
+  const bar = `
+    <div class="bar">
+      ${lead}
+      ${switchHtml()}
+      ${S.perm ? `<button class="icon-btn" data-act="search" aria-label="Поиск">${icon('search')}</button>` : ''}
+      <button class="icon-btn" data-act="settings" aria-label="Настройки">${icon('gear')}</button>
+    </div>`;
+
+  let sub = '';
+  let crumbs = false;
   if (n > 0) {
-    topbar.className = 'topbar selecting';
-    topbar.innerHTML = `
+    sub = `<div class="sub selbar">
       <button class="icon-btn" data-act="clear-sel" aria-label="Отменить выбор">${icon('close')}</button>
       <div class="sel-count"><b>${n}</b><span>${plural(n, ['выбран', 'выбрано', 'выбрано'])}</span></div>
-      <button class="icon-btn" data-act="select-all" aria-label="Выбрать всё">${icon('selectAll')}</button>`;
-    return;
-  }
-  if (inSearch()) {
-    topbar.className = 'topbar searching';
-    topbar.innerHTML = `
-      <button class="icon-btn" data-act="exit-search" aria-label="Назад">${icon('back')}</button>
+      <button class="icon-btn" data-act="select-all" aria-label="Выбрать всё">${icon('selectAll')}</button>
+    </div>`;
+  } else if (inSearch()) {
+    sub = `<div class="sub searchbar">
       <input id="search-input" type="search" inputmode="search" enterkeyhint="search" placeholder="${S.path ? 'Поиск в этой папке' : 'Поиск по памяти'}" value="${escapeHtml(S.search.q)}" autocomplete="off" />
-      ${S.search.q ? `<button class="icon-btn" data-act="clear-query" aria-label="Очистить">${icon('close')}</button>` : ''}`;
-    return;
+      ${S.search.q ? `<button class="icon-btn" data-act="clear-query" aria-label="Очистить">${icon('close')}</button>` : ''}
+    </div>`;
+  } else if (S.path && S.perm) {
+    crumbs = true;
+    sub = `<div class="sub crumbbar">
+      <nav class="crumbs" aria-label="Путь">${crumbsHtml()}</nav>
+      <button class="icon-btn small" data-act="toggle-view" aria-label="Сменить вид">${icon(prefs.view === 'list' ? 'grid' : 'list', 20)}</button>
+    </div>`;
   }
-  if (!S.path || !S.perm) {
-    topbar.className = 'topbar home';
-    topbar.innerHTML = `
-      <div class="wordmark">${folderGlyph(26)}<span>FileDeck</span></div>
-      <div class="spacer"></div>
-      ${S.perm ? `<button class="icon-btn" data-act="search" aria-label="Поиск">${icon('search')}</button>` : ''}
-      <button class="icon-btn" data-act="menu" aria-label="Меню">${icon('more')}</button>`;
-    return;
-  }
-  topbar.className = 'topbar browse';
-  topbar.innerHTML = `
-    <button class="icon-btn" data-act="up" aria-label="Наверх">${icon('back')}</button>
-    <nav class="crumbs" aria-label="Путь">${crumbsHtml()}</nav>
-    <button class="icon-btn" data-act="search" aria-label="Поиск">${icon('search')}</button>
-    <button class="icon-btn" data-act="menu" aria-label="Меню">${icon('more')}</button>`;
+  topbar.className = `topbar${crumbs ? ' has-crumbs' : ''}${n > 0 ? ' selecting' : ''}`;
+  topbar.innerHTML = bar + sub;
   const nav = topbar.querySelector('.crumbs');
-  nav.scrollLeft = nav.scrollWidth;
+  if (nav) nav.scrollLeft = nav.scrollWidth;
+  const input = $('search-input');
+  if (input && S.search && !S.search.q && document.activeElement !== input) setTimeout(() => input.focus(), 30);
 }
 
 function crumbsHtml() {
@@ -213,6 +246,29 @@ function crumbsHtml() {
     tabs.push(`<button class="tab${i === parts.length - 1 ? ' current' : ''}" data-path="${escapeHtml(acc)}">${escapeHtml(p)}</button>`);
   });
   return tabs.join('');
+}
+
+function switchRoot(which) {
+  if (!S.perm) return toast('Сначала выдайте доступ к файлам', { error: true });
+  const root = which === 'sd' ? S.roots.find((r) => !r.primary) : primaryRoot();
+  if (!root) return toast('SD-карта не найдена. Вставьте карту и вернитесь в приложение', { error: true });
+  const cur = S.path ? rootOf(S.path) : null;
+  if (cur && cur.path === root.path && S.path !== root.path && !inSearch()) return go(root.path); // повторный тап — в корень
+  go(S.lastIn[root.path] || root.path);
+}
+
+function openSettingsPage() {
+  openSettings({
+    prefs,
+    save: savePrefs,
+    onChange: () => { applyTheme(); render({ keepScroll: true }); },
+    version: APP_VERSION,
+    build: APP_BUILD,
+    native: isNative,
+    hasAccess: () => !!S.perm,
+    requestAccess: requestPermission,
+    reset: () => { Object.assign(prefs, JSON.parse(DEFAULTS)); savePrefs(); },
+  });
 }
 
 function renderContent() {
@@ -296,7 +352,7 @@ function renderList() {
     return;
   } else if (!list.length) {
     const hiddenCount = S.entries.length;
-    content.innerHTML = `<div class="state"><div class="empty-glyph">${folderGlyph(64, true)}</div><h1>Здесь пусто</h1><p>${hiddenCount ? 'В папке только скрытые файлы. Включите их показ в меню.' : 'Создайте папку или файл кнопкой «+», либо вставьте скопированное.'}</p></div>`;
+    content.innerHTML = `<div class="state"><div class="empty-glyph">${folderGlyph(64, true)}</div><h1>Здесь пусто</h1><p>${hiddenCount ? 'В папке только скрытые файлы. Включите их показ в настройках (шестерёнка).' : 'Создайте папку или файл кнопкой «+», либо вставьте скопированное.'}</p></div>`;
     return;
   }
 
@@ -389,17 +445,19 @@ function renderDock() {
 topbar.addEventListener('click', (ev) => {
   const tab = ev.target.closest('.tab');
   if (tab) return go(tab.dataset.path);
-  const act = ev.target.closest('[data-act]')?.dataset.act;
-  if (!act) return;
+  const el = ev.target.closest('[data-act]');
+  if (!el) return;
   ({
+    switch: () => switchRoot(el.dataset.root),
+    settings: openSettingsPage,
+    'toggle-view': () => { prefs.view = prefs.view === 'list' ? 'grid' : 'list'; savePrefs(); render({ keepScroll: true }); },
     'clear-sel': () => { S.selection.clear(); render({ keepScroll: true }); },
     'select-all': selectAll,
     'exit-search': exitSearch,
     'clear-query': () => { S.search.q = ''; S.search.results = []; render(); $('search-input')?.focus(); },
     search: startSearch,
-    menu: openMenu,
     up,
-  })[act]?.();
+  })[el.dataset.act]?.();
 });
 
 topbar.addEventListener('input', (ev) => {
@@ -548,7 +606,7 @@ function report(res, verb) {
 
 async function deletePaths(paths) {
   const names = paths.map(basename);
-  const ok = await confirmDialog({
+  const ok = !prefs.confirmDelete || await confirmDialog({
     title: paths.length === 1 ? `Удалить «${names[0]}»?` : `Удалить выбранное (${paths.length})?`,
     text: 'Файлы будут удалены без возможности восстановления.',
   });
@@ -714,53 +772,6 @@ function renderContentOnly() {
   renderDock();
 }
 
-// ------------------------------------------------------------------ меню
-function openMenu() {
-  const items = [];
-  if (S.path && S.perm) {
-    items.push(
-      { icon: prefs.view === 'list' ? 'grid' : 'list', label: prefs.view === 'list' ? 'Показать сеткой' : 'Показать списком', onClick: () => { prefs.view = prefs.view === 'list' ? 'grid' : 'list'; savePrefs(); render({ keepScroll: true }); } },
-      { icon: 'sort', label: 'Сортировка', hint: sortLabel(), onClick: openSortSheet },
-      { icon: prefs.hidden ? 'eyeOff' : 'eye', label: prefs.hidden ? 'Скрыть скрытые файлы' : 'Показать скрытые файлы', onClick: () => { prefs.hidden = !prefs.hidden; savePrefs(); render({ keepScroll: true }); } },
-      { icon: 'refresh', label: 'Обновить', onClick: refresh },
-      { divider: true }
-    );
-  } else if (S.perm) {
-    items.push({ icon: 'refresh', label: 'Обновить', onClick: refresh }, { divider: true });
-  }
-  items.push({ icon: 'theme', label: 'Тема', hint: { auto: 'Как в системе', dark: 'Тёмная', light: 'Светлая' }[prefs.theme], onClick: openThemeSheet });
-  sheet({ items });
-}
-
-const SORTS = [['name', 'По имени'], ['date', 'По дате'], ['size', 'По размеру'], ['type', 'По типу']];
-const sortLabel = () => `${SORTS.find((s) => s[0] === prefs.sortBy)[1].toLowerCase()}, ${prefs.desc ? 'по убыванию' : 'по возрастанию'}`;
-function openSortSheet() {
-  sheet({
-    title: 'Сортировка',
-    subtitle: 'Папки всегда идут первыми. Повторное нажатие меняет порядок.',
-    items: SORTS.map(([key, label]) => ({
-      label,
-      hint: prefs.sortBy === key ? (prefs.desc ? 'по убыванию' : 'по возрастанию') : '',
-      active: prefs.sortBy === key,
-      onClick: () => {
-        if (prefs.sortBy === key) prefs.desc = !prefs.desc;
-        else { prefs.sortBy = key; prefs.desc = key === 'date' || key === 'size'; }
-        savePrefs();
-        render({ keepScroll: true });
-      },
-    })),
-  });
-}
-function openThemeSheet() {
-  sheet({
-    title: 'Тема',
-    items: [['auto', 'Как в системе'], ['dark', 'Тёмная'], ['light', 'Светлая']].map(([k, label]) => ({
-      label, active: prefs.theme === k,
-      onClick: () => { prefs.theme = k; savePrefs(); applyTheme(); },
-    })),
-  });
-}
-
 // ------------------------------------------------------------------ системное
 function plural(n, [one, few, many]) {
   const m10 = n % 10, m100 = n % 100;
@@ -780,7 +791,7 @@ function onBackButton() {
 
 CapApp.addListener('backButton', onBackButton);
 // Возврат с экрана системных настроек — перепроверяем разрешение
-CapApp.addListener('resume', () => { if (!S.perm) checkPermission(); });
+CapApp.addListener('resume', () => { if (!S.perm) checkPermission(); else loadRoots().then(() => render({ keepScroll: true })); });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && S.perm === false) checkPermission();
 });

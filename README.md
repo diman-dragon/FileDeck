@@ -1,7 +1,11 @@
-# FileDeck — файловый менеджер для Android (Capacitor)
+# FileDeck by DataLaw — файловый менеджер для Android (Capacitor 8)
+
+Текущая версия: **1.0.1** (см. `CHANGELOG.md`).
 
 Полноценный файловый менеджер: обзор памяти и SD-карты, копирование / перенос / удаление, переименование,
-zip-архивы, поиск, просмотр картинок, текстовый редактор, сетка и список, сортировка, тёмная и светлая темы.
+zip-архивы, поиск, просмотр картинок, текстовый редактор, сетка и список, сортировка.
+В шапке всегда есть переключатель «Память / SD-карта», справа — шестерёнка настроек.
+Темы: AMOLED и светло-коричневая.
 Интерфейс — обычные HTML/CSS/JS (Vite), работа с файлами — собственный нативный плагин на Java.
 
 ## Что нужно установить
@@ -34,14 +38,26 @@ npm install
 npm run apk
 ```
 
-Готовый APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
-Установка на телефон по USB (включите «Отладку по USB»):
+Готовый APK: `release/filedeck-1.0.1-debug.apk`.
+Установка на телефон по USB (включите «Отладку по USB») — **поверх установленной версии**:
 
 ```bash
 npm run install:device
 ```
 
 Или одной командой собрать и запустить: `npm run run:device`.
+
+## Версии и обновления
+
+Версия хранится в одном месте — `package.json`. Перед каждым выпуском:
+
+```bash
+npm run bump          # 1.0.1 → 1.0.2 (или: bump minor / bump major / bump 1.4.0)
+```
+
+`versionCode` для Android считается автоматически, а APK подписывается ключом из `android/signing/`
+(одинаковым на всех машинах), поэтому новая сборка устанавливается как **обновление**, без удаления.
+Если на телефоне осталась версия 1.0.0 с другим ключом — удалите её один раз. Подробности — `docs/PUBLISHING.md`.
 
 ## Команды
 
@@ -50,8 +66,11 @@ npm run install:device
 | `npm run dev` | веб-превью в браузере на моковой файловой системе — быстрая разработка интерфейса |
 | `npm run build` | сборка веб-части в `dist/` |
 | `npm run sync` | сборка + `cap sync android` (копирует веб в Android-проект) |
-| `npm run apk` | sync + debug APK |
-| `npm run apk:release` | sync + release APK (подписанный, если есть `android/keystore.properties`) |
+| `npm run apk` | sync + debug APK → `release/filedeck-<версия>-debug.apk` |
+| `npm run apk:release` | release APK → `release/filedeck-<версия>.apk` |
+| `npm run aab` | AAB для Google Play → `release/filedeck-<версия>.aab` |
+| `npm run release` | и APK, и AAB |
+| `npm run bump` | поднять версию |
 | `npm run install:device` | `adb install -r` для debug APK |
 | `npm run run:device` | sync + запуск на подключённом устройстве |
 | `npm run open:studio` | открыть `android/` в Android Studio |
@@ -72,6 +91,8 @@ filedeck/
 │  ├─ mock-fs.js              имитация ФС для разработки в браузере
 │  ├─ layers.js               листы, диалоги, тосты, стек «Назад»
 │  ├─ viewer.js               просмотр изображений и текстовый редактор
+│  ├─ settings.js             экран настроек (шестерёнка)
+│  ├─ assets/d-mark.png       логотип DataLaw (маска для CSS)
 │  ├─ icons.js · utils.js
 │  └─ styles.css              оформление (темы, адаптивность)
 ├─ android/                   нативный проект (Gradle)
@@ -80,8 +101,12 @@ filedeck/
 │     │  ├─ MainActivity.java         регистрирует плагин
 │     │  └─ FileManagerPlugin.java    вся работа с файлами
 │     ├─ AndroidManifest.xml          разрешения
+│     ├─ (android/signing/)           ключ для сборок «для себя»
 │     └─ res/xml/file_paths.xml       FileProvider (открыть / поделиться)
-├─ scripts/                   gradle.mjs, adb-install.mjs (кроссплатформенные)
+├─ scripts/                   gradle.mjs, adb-install.mjs, bump.mjs
+├─ docs/                      публикация, политика конфиденциальности, тексты магазина
+├─ branding/                  логотип DataLaw, иконка 512×512
+├─ CHANGELOG.md
 ├─ .vscode/                   задачи, настройки, рекомендации расширений
 └─ .github/workflows/android.yml   сборка APK в GitHub Actions
 ```
@@ -108,20 +133,14 @@ filedeck/
 > Для публикации в Google Play это разрешение требует отдельного обоснования (категория
 > «файловый менеджер» его допускает). Для личной установки APK ограничений нет.
 
-## Релизная подпись
+## Публикация
 
-```bash
-keytool -genkey -v -keystore filedeck.jks -keyalg RSA -keysize 2048 -validity 10000 -alias filedeck
-cp android/keystore.properties.example android/keystore.properties   # заполните пароли
-npm run apk:release
-```
-
-APK: `android/app/build/outputs/apk/release/app-release.apk`. Ключ и `keystore.properties`
-уже в `.gitignore` — не коммитьте их.
+Ключ для Google Play, чек-лист, тексты магазина и политика конфиденциальности — в папке `docs/`
+(`PUBLISHING.md`, `STORE_LISTING.md`, `PRIVACY.md`).
 
 ## Сборка в облаке
 
-`.github/workflows/android.yml` собирает debug APK при каждом push в GitHub и кладёт его в артефакты
+`.github/workflows/android.yml` при каждом push собирает APK и AAB и кладёт их в артефакты
 запуска (Actions → нужный запуск → Artifacts).
 
 ## Если что-то не собирается

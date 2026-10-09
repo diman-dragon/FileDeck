@@ -5,5 +5,9 @@ dist/
 Thumbs.db
 .idea/
 *.jks
+!android/signing/filedeck-sideload.jks
 *.keystore
 android/keystore.properties
+
+# Готовые сборки
+release/

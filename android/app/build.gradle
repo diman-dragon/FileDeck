@@ -1,11 +1,24 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
 
-// Подпись релизной сборки. Создайте android/keystore.properties (см. keystore.properties.example),
-// и `npm run apk:release` выдаст подписанный APK. Без файла получится неподписанный APK.
-def keystorePropsFile = rootProject.file('keystore.properties')
-def keystoreProps = new Properties()
-if (keystorePropsFile.exists()) {
-    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+// ---------------------------------------------------------------- версия
+// Единственный источник правды — "version" в package.json (npm run bump patch|minor|major).
+// versionCode = major*10000 + minor*100 + patch → каждая новая версия строго больше предыдущей,
+// поэтому Android ставит её как обновление, а не как новое приложение.
+def pkg = new JsonSlurper().parse(rootProject.file('../package.json'))
+def versionParts = pkg.version.tokenize('.')
+def computedVersionCode = versionParts[0].toInteger() * 10000 + versionParts[1].toInteger() * 100 + versionParts[2].toInteger()
+
+// ---------------------------------------------------------------- подпись
+// 1) sideload-ключ из репозитория — для debug/CI/установки «для себя» (один и тот же на всех машинах);
+// 2) android/keystore.properties (если создан) — ваш личный ключ для Google Play / публичных релизов.
+def sideloadProps = new Properties()
+rootProject.file('signing/signing.properties').withInputStream { sideloadProps.load(it) }
+def storePropsFile = rootProject.file('keystore.properties')
+def storeProps = new Properties()
+if (storePropsFile.exists()) {
+    storePropsFile.withInputStream { storeProps.load(it) }
 }
 
 android {
@@ -15,8 +28,8 @@ android {
         applicationId "dev.filedeck.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode computedVersionCode
+        versionName pkg.version
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -25,23 +38,34 @@ android {
         }
     }
     signingConfigs {
-        if (keystorePropsFile.exists()) {
-            release {
-                storeFile file(keystoreProps['storeFile'])
-                storePassword keystoreProps['storePassword']
-                keyAlias keystoreProps['keyAlias']
-                keyPassword keystoreProps['keyPassword']
+        sideload {
+            storeFile rootProject.file(sideloadProps['storeFile'])
+            storeType sideloadProps['storeType']
+            storePassword sideloadProps['storePassword']
+            keyAlias sideloadProps['keyAlias']
+            keyPassword sideloadProps['keyPassword']
+        }
+        if (storePropsFile.exists()) {
+            store {
+                storeFile rootProject.file(storeProps['storeFile'])
+                storePassword storeProps['storePassword']
+                keyAlias storeProps['keyAlias']
+                keyPassword storeProps['keyPassword']
             }
         }
     }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.sideload
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if (keystorePropsFile.exists()) {
-                signingConfig signingConfigs.release
-            }
+            signingConfig storePropsFile.exists() ? signingConfigs.store : signingConfigs.sideload
         }
+    }
+    bundle {
+        language { enableSplit = false }
     }
 }
 

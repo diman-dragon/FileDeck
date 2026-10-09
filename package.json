@@ -1,8 +1,8 @@
 {
   "name": "filedeck",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
-  "description": "FileDeck — файловый менеджер для Android на Capacitor",
+  "description": "FileDeck by DataLaw — файловый менеджер для Android (Capacitor 8)",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -17,7 +17,10 @@
     "run:device": "npm run sync && cap run android",
     "open:studio": "cap open android",
     "clean": "node scripts/gradle.mjs clean",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "aab": "npm run sync && node scripts/gradle.mjs bundleRelease",
+    "release": "npm run sync && node scripts/gradle.mjs assembleRelease bundleRelease",
+    "bump": "node scripts/bump.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",

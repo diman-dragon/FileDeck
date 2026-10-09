@@ -102,5 +102,6 @@ app/src/main/res/xml/config.xml
 
 # Подпись релиза
 keystore.properties
-*.jks
 *.keystore
+*.jks
+!signing/filedeck-sideload.jks

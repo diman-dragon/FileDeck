@@ -7,7 +7,9 @@
       "command": "npm run dev",
       "isBackground": true,
       "problemMatcher": [],
-      "presentation": { "panel": "dedicated" }
+      "presentation": {
+        "panel": "dedicated"
+      }
     },
     {
       "label": "Web: собрать (vite build)",
@@ -25,7 +27,10 @@
       "label": "Android: собрать debug APK",
       "type": "shell",
       "command": "npm run apk",
-      "group": { "kind": "build", "isDefault": true },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "problemMatcher": []
     },
     {
@@ -57,6 +62,19 @@
       "label": "Android: очистить сборку",
       "type": "shell",
       "command": "npm run clean",
+      "problemMatcher": []
+    },
+    {
+      "label": "Версия: поднять patch (npm run bump)",
+      "type": "shell",
+      "command": "npm run bump",
+      "problemMatcher": []
+    },
+    {
+      "label": "Релиз: APK + AAB (npm run release)",
+      "type": "shell",
+      "command": "npm run release",
+      "group": "build",
       "problemMatcher": []
     }
   ]
