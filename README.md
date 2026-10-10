@@ -1,11 +1,13 @@
 # FileDeck by DataLaw — файловый менеджер для Android (Capacitor 8)
 
-Текущая версия: **1.0.1** (см. `CHANGELOG.md`).
+Текущая версия: **2.0.0** (см. `CHANGELOG.md`).
 
 Полноценный файловый менеджер: обзор памяти и SD-карты, копирование / перенос / удаление, переименование,
 zip-архивы, поиск, просмотр картинок, текстовый редактор, сетка и список, сортировка.
 В шапке всегда есть переключатель «Память / SD-карта», справа — шестерёнка настроек.
 Темы: AMOLED и светло-коричневая.
+Глубокая очистка (дубликаты, похожие фото, мусор, пустые папки), корзина с восстановлением и архиватор
+(ZIP с паролем, 7z, TAR, RAR).
 Интерфейс — обычные HTML/CSS/JS (Vite), работа с файлами — собственный нативный плагин на Java.
 
 ## Что нужно установить
@@ -14,7 +16,7 @@ zip-архивы, поиск, просмотр картинок, текстов�
 |---|---|---|
 | Node.js | 22+ | сборка веб-части и Capacitor CLI |
 | JDK | 21 | Gradle / Android Gradle Plugin |
-| Android SDK | platform 36 + build-tools | сборка APK |
+| Android SDK | platform 36 + build-tools | сборка APK (минимальная версия приложения — Android 8.0) |
 | git | любая | клонирование и версионирование |
 | VS Code | любая | редактор (рекомендованные расширения подтянутся сами) |
 
@@ -38,7 +40,7 @@ npm install
 npm run apk
 ```
 
-Готовый APK: `release/filedeck-1.0.1-debug.apk`.
+Готовый APK: `release/filedeck-2.0.0-debug.apk`.
 Установка на телефон по USB (включите «Отладку по USB») — **поверх установленной версии**:
 
 ```bash
@@ -52,12 +54,13 @@ npm run install:device
 Версия хранится в одном месте — `package.json`. Перед каждым выпуском:
 
 ```bash
-npm run bump          # 1.0.1 → 1.0.2 (или: bump minor / bump major / bump 1.4.0)
+npm run bump          # 2.0.0 → 2.0.1 (или: bump minor / bump major / bump 1.4.0)
 ```
 
 `versionCode` для Android считается автоматически, а APK подписывается ключом из `android/signing/`
 (одинаковым на всех машинах), поэтому новая сборка устанавливается как **обновление**, без удаления.
-Если на телефоне осталась версия 1.0.0 с другим ключом — удалите её один раз. Подробности — `docs/PUBLISHING.md`.
+Если на телефоне осталась версия 1.0.0 с другим ключом — удалите её один раз. Подробности — `docs/SIGNING.md`.
+Проверить заранее: `npm run doctor` (подключите телефон по USB).
 
 ## Команды
 
@@ -71,6 +74,10 @@ npm run bump          # 1.0.1 → 1.0.2 (или: bump minor / bump major / bump 
 | `npm run aab` | AAB для Google Play → `release/filedeck-<версия>.aab` |
 | `npm run release` | и APK, и AAB |
 | `npm run bump` | поднять версию |
+| `npm run doctor` | проверить окружение и подпись; если подключён телефон — обновится ли сборка поверх |
+| `npm run keygen` | создать личный ключ для Google Play |
+| `npm run test:native` | 81 проверка нативной логики на JVM |
+| `npm run icons` | пересобрать иконки из `src/assets/d-mark.png` |
 | `npm run install:device` | `adb install -r` для debug APK |
 | `npm run run:device` | sync + запуск на подключённом устройстве |
 | `npm run open:studio` | открыть `android/` в Android Studio |
@@ -92,6 +99,8 @@ filedeck/
 │  ├─ layers.js               листы, диалоги, тосты, стек «Назад»
 │  ├─ viewer.js               просмотр изображений и текстовый редактор
 │  ├─ settings.js             экран настроек (шестерёнка)
+│  ├─ cleaner.js · trash.js   глубокая очистка и корзина
+│  ├─ archive.js              создание, просмотр и распаковка архивов
 │  ├─ assets/d-mark.png       логотип DataLaw (маска для CSS)
 │  ├─ icons.js · utils.js
 │  └─ styles.css              оформление (темы, адаптивность)
@@ -99,13 +108,17 @@ filedeck/
 │  └─ app/src/main/
 │     ├─ java/dev/filedeck/app/
 │     │  ├─ MainActivity.java         регистрирует плагин
-│     │  └─ FileManagerPlugin.java    вся работа с файлами
+│     │  ├─ FileManagerPlugin.java    файлы, сведения о приложении
+│     │  ├─ CleanerPlugin.java        сканер очистки и корзина
+│     │  ├─ ArchivePlugin.java        архиватор
+│     │  └─ FsUtil.java               общие файловые утилиты
 │     ├─ AndroidManifest.xml          разрешения
 │     ├─ (android/signing/)           ключ для сборок «для себя»
 │     └─ res/xml/file_paths.xml       FileProvider (открыть / поделиться)
 ├─ scripts/                   gradle.mjs, adb-install.mjs, bump.mjs
 ├─ docs/                      публикация, политика конфиденциальности, тексты магазина
-├─ branding/                  логотип DataLaw, иконка 512×512
+├─ branding/                  логотип DataLaw, иконка 512×512 для Play Store
+├─ tools/native-tests/        проверки нативной логики на JVM
 ├─ CHANGELOG.md
 ├─ .vscode/                   задачи, настройки, рекомендации расширений
 └─ .github/workflows/android.yml   сборка APK в GitHub Actions
@@ -116,8 +129,9 @@ filedeck/
 Стандартный плагин `@capacitor/filesystem` работает только с папками приложения, поэтому для файлового
 менеджера написан свой плагин `FileManager` (Java). Он оперирует обычными путями
 (`/storage/emulated/0/...`) и умеет: `getRoots`, `list`, `search`, `size`, `mkdir`, `createFile`,
-`rename`, `remove`, `copy`, `move`, `zip`, `unzip`, `readText`, `writeText`, `open`, `share`,
-`checkPermission`, `requestPermission`. Тяжёлые операции идут в отдельном пуле потоков и не блокируют
+`rename`, `remove`, `copy`, `move`, `readText`, `writeText`, `open`, `share`,
+`checkPermission`, `requestPermission`, `appInfo`. Плагины `Cleaner` (scan, trash*) и `Archive`
+(create, list, extract) вынесены отдельно. Тяжёлые операции идут в отдельном пуле потоков и не блокируют
 интерфейс. Распаковка защищена от Zip Slip, копирование папки внутрь самой себя запрещено,
 при совпадении имён добавляется « (1)» — существующие файлы не перезаписываются.
 

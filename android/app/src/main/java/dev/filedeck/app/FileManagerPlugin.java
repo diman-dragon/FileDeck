@@ -5,6 +5,9 @@ import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -24,8 +27,6 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,6 +35,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -42,9 +44,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Нативный плагин файловой системы для FileDeck.
@@ -87,6 +86,48 @@ public class FileManagerPlugin extends Plugin {
     protected void handleOnDestroy() {
         pool.shutdownNow();
         super.handleOnDestroy();
+    }
+
+    // ---------------------------------------------------------------- сведения о приложении
+
+    /** Версия, подпись (SHA-256 сертификата) и даты установки — чтобы убедиться, что обновления идут поверх. */
+    @PluginMethod
+    public void appInfo(PluginCall call) {
+        try {
+            Context ctx = getContext();
+            PackageManager pm = ctx.getPackageManager();
+            PackageInfo pi;
+            Signature[] sigs;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pi = pm.getPackageInfo(ctx.getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
+                sigs = pi.signingInfo == null ? null
+                    : pi.signingInfo.hasMultipleSigners() ? pi.signingInfo.getApkContentsSigners() : pi.signingInfo.getSigningCertificateHistory();
+            } else {
+                pi = pm.getPackageInfo(ctx.getPackageName(), PackageManager.GET_SIGNATURES);
+                sigs = pi.signatures;
+            }
+            JSObject ret = new JSObject();
+            ret.put("package", ctx.getPackageName());
+            ret.put("versionName", pi.versionName == null ? "" : pi.versionName);
+            ret.put("versionCode", Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? pi.getLongVersionCode() : (long) pi.versionCode);
+            ret.put("firstInstall", pi.firstInstallTime);
+            ret.put("lastUpdate", pi.lastUpdateTime);
+            ret.put("sdk", Build.VERSION.SDK_INT);
+            String fp = "";
+            if (sigs != null && sigs.length > 0) {
+                byte[] digest = MessageDigest.getInstance("SHA-256").digest(sigs[0].toByteArray());
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < digest.length; i++) {
+                    if (i > 0) sb.append(':');
+                    sb.append(String.format(Locale.ROOT, "%02X", digest[i]));
+                }
+                fp = sb.toString();
+            }
+            ret.put("signature", fp);
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("Не удалось получить сведения о приложении: " + e.getMessage());
+        }
     }
 
     // ---------------------------------------------------------------- разрешения
@@ -454,106 +495,6 @@ public class FileManagerPlugin extends Plugin {
             //noinspection ResultOfMethodCallIgnored
             dst.setLastModified(src.lastModified());
         }
-    }
-
-    // ---------------------------------------------------------------- архивы
-
-    @PluginMethod
-    public void zip(PluginCall call) {
-        final List<String> paths = getPaths(call);
-        final String dest = call.getString("dest");
-        final String name = call.getString("name", "archive.zip");
-        async(call, () -> {
-            if (dest == null || paths.isEmpty()) throw new IOException("Нечего архивировать");
-            File target = uniqueTarget(new File(dest), name.endsWith(".zip") ? name : name + ".zip");
-            try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(target)))) {
-                for (String p : paths) {
-                    File f = new File(p);
-                    if (f.getCanonicalPath().equals(target.getCanonicalPath())) continue;
-                    addToZip(zos, f, f.getName());
-                }
-            } catch (IOException e) {
-                //noinspection ResultOfMethodCallIgnored
-                target.delete();
-                throw e;
-            }
-            JSObject ret = new JSObject();
-            ret.put("path", target.getAbsolutePath());
-            call.resolve(ret);
-        });
-    }
-
-    private void addToZip(ZipOutputStream zos, File f, String entryName) throws IOException {
-        if (f.isDirectory()) {
-            zos.putNextEntry(new ZipEntry(entryName + "/"));
-            zos.closeEntry();
-            if (isSymlink(f)) return;
-            File[] ch = f.listFiles();
-            if (ch != null) for (File c : ch) addToZip(zos, c, entryName + "/" + c.getName());
-        } else {
-            ZipEntry e = new ZipEntry(entryName);
-            e.setTime(f.lastModified());
-            zos.putNextEntry(e);
-            try (InputStream in = new BufferedInputStream(new FileInputStream(f), BUFFER)) {
-                byte[] buf = new byte[BUFFER];
-                int n;
-                while ((n = in.read(buf)) > 0) zos.write(buf, 0, n);
-            }
-            zos.closeEntry();
-        }
-    }
-
-    @PluginMethod
-    public void unzip(PluginCall call) {
-        final String path = call.getString("path");
-        final String dest = call.getString("dest");
-        async(call, () -> {
-            if (path == null || dest == null) throw new IOException("Не указан архив или папка");
-            File zipFile = new File(path);
-            String base = zipFile.getName();
-            int dot = base.lastIndexOf('.');
-            if (dot > 0) base = base.substring(0, dot);
-            File outDir = uniqueTarget(new File(dest), base);
-            if (!outDir.mkdirs()) throw new IOException("Не удалось создать папку для распаковки");
-            String outCanon = outDir.getCanonicalPath();
-
-            try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(new FileInputStream(zipFile), BUFFER))) {
-                ZipEntry e;
-                byte[] buf = new byte[BUFFER];
-                while ((e = zis.getNextEntry()) != null) {
-                    File out = new File(outDir, e.getName());
-                    // защита от Zip Slip
-                    String canon = out.getCanonicalPath();
-                    if (!canon.equals(outCanon) && !canon.startsWith(outCanon + File.separator)) {
-                        throw new IOException("Архив содержит небезопасные пути");
-                    }
-                    if (e.isDirectory()) {
-                        //noinspection ResultOfMethodCallIgnored
-                        out.mkdirs();
-                    } else {
-                        File parent = out.getParentFile();
-                        if (parent != null && !parent.exists()) {
-                            //noinspection ResultOfMethodCallIgnored
-                            parent.mkdirs();
-                        }
-                        try (OutputStream os = new BufferedOutputStream(new FileOutputStream(out), BUFFER)) {
-                            int n;
-                            while ((n = zis.read(buf)) > 0) os.write(buf, 0, n);
-                        }
-                        if (e.getTime() > 0) {
-                            //noinspection ResultOfMethodCallIgnored
-                            out.setLastModified(e.getTime());
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                deleteRecursive(outDir);
-                throw e;
-            }
-            JSObject ret = new JSObject();
-            ret.put("path", outDir.getAbsolutePath());
-            call.resolve(ret);
-        });
     }
 
     // ---------------------------------------------------------------- текст

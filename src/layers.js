@@ -60,7 +60,7 @@ export function toast(message, { error = false, ms = 2600 } = {}) {
 /**
  * items: [{ icon, label, hint, danger, active, onClick }] или { divider: true }
  */
-export function sheet({ title, subtitle, items }) {
+export function sheet({ title, subtitle, items, onDismiss }) {
   const rows = items
     .map((it, i) =>
       it.divider
@@ -81,11 +81,17 @@ export function sheet({ title, subtitle, items }) {
      </div>`,
     'layer-root layer-sheet'
   );
-  const close = pushLayer(node);
-  node.querySelector('.scrim').addEventListener('click', close);
+  let picked = false;
+  const dismiss = () => {
+    close();
+    if (!picked && onDismiss) onDismiss();
+  };
+  const close = pushLayer(node, { onBack: dismiss });
+  node.querySelector('.scrim').addEventListener('click', dismiss);
   node.querySelectorAll('.sheet-item').forEach((b) =>
     b.addEventListener('click', () => {
       const it = items[Number(b.dataset.i)];
+      picked = true;
       close();
       setTimeout(() => it.onClick && it.onClick(), 120);
     })
@@ -101,7 +107,8 @@ function dialog({ title, body, okText, cancelText = 'Отмена', danger = fal
        <form class="dialog" role="alertdialog" aria-modal="true">
          <h2 class="dialog-title">${escapeHtml(title)}</h2>
          ${body ? `<p class="dialog-body">${body}</p>` : ''}
-         ${withInput ? `<input class="dialog-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${escapeHtml(withInput.placeholder || '')}" value="${escapeHtml(withInput.value || '')}" />` : ''}
+         ${withInput ? `<input class="dialog-input${withInput.error ? ' invalid' : ''}" type="${withInput.type || 'text'}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${escapeHtml(withInput.placeholder || '')}" value="${escapeHtml(withInput.value || '')}" />` : ''}
+         ${withInput && withInput.error ? `<p class="dialog-error">${escapeHtml(withInput.error)}</p>` : ''}
          <div class="dialog-actions">
            <button type="button" class="btn ghost" data-act="cancel">${escapeHtml(cancelText)}</button>
            <button type="submit" class="btn ${danger ? 'danger' : 'primary'}">${escapeHtml(okText)}</button>
@@ -138,8 +145,8 @@ function dialog({ title, body, okText, cancelText = 'Отмена', danger = fal
 export const confirmDialog = ({ title, text, okText = 'Удалить', danger = true }) =>
   dialog({ title, body: text ? escapeHtml(text) : '', okText, danger });
 
-export const promptDialog = ({ title, value = '', placeholder = '', okText = 'Готово', selectBase = false }) =>
-  dialog({ title, okText, withInput: { value, placeholder, selectBase } });
+export const promptDialog = ({ title, text = '', value = '', placeholder = '', okText = 'Готово', selectBase = false, type = 'text', error = '' }) =>
+  dialog({ title, body: text ? escapeHtml(text) : '', okText, withInput: { value, placeholder, selectBase, type, error } });
 
 export function infoDialog({ title, rows }) {
   const html = rows
@@ -162,6 +169,44 @@ export function infoDialog({ title, rows }) {
     set(key, value) {
       const b = node.querySelector(`b[data-k="${CSS.escape(key)}"]`);
       if (b) b.textContent = value;
+    },
+  };
+}
+
+/** Окно прогресса длинной операции. set(0..1, подпись); onCancel вызывается по кнопке «Отмена». */
+export function progressDialog({ title, onCancel, cancelText = 'Отмена' }) {
+  const node = el(
+    `<div class="scrim"></div>
+     <div class="dialog progress-dialog" role="alertdialog" aria-modal="true" aria-live="polite">
+       <h2 class="dialog-title">${escapeHtml(title)}</h2>
+       <div class="pbar"><i></i></div>
+       <div class="pmeta"><span class="pcur">Подготовка…</span><span class="ppct">0%</span></div>
+       <div class="dialog-actions"><button class="btn ghost" data-act="cancel">${escapeHtml(cancelText)}</button></div>
+     </div>`,
+    'layer-root layer-dialog'
+  );
+  let closed = false;
+  const close = pushLayer(node, { onBack: () => cancel() });
+  const bar = node.querySelector('.pbar i');
+  const cur = node.querySelector('.pcur');
+  const pct = node.querySelector('.ppct');
+  function cancel() {
+    if (closed) return;
+    node.querySelector('[data-act="cancel"]').disabled = true;
+    cur.textContent = 'Отменяем…';
+    onCancel && onCancel();
+  }
+  node.querySelector('[data-act="cancel"]').addEventListener('click', cancel);
+  return {
+    set(fraction, text) {
+      const f = Math.max(0, Math.min(1, fraction || 0));
+      bar.style.width = `${(f * 100).toFixed(1)}%`;
+      pct.textContent = `${Math.round(f * 100)}%`;
+      if (text) cur.textContent = text.length > 60 ? '…' + text.slice(-58) : text;
+    },
+    close() {
+      closed = true;
+      close();
     },
   };
 }

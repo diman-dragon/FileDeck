@@ -1,6 +1,6 @@
 import { icon } from './icons.js';
 import { pushLayer, el, toast, confirmDialog } from './layers.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, formatSize, formatDate } from './utils.js';
 
 const THEMES = [
   ['auto', 'Как в системе', 'Тёмная ночью, светлая днём'],
@@ -8,6 +8,7 @@ const THEMES = [
   ['light', 'Светло-коричневая', 'Тёплая светлая тема цвета какао с молоком'],
 ];
 const SORTS = [['name', 'По имени'], ['date', 'По дате'], ['size', 'По размеру'], ['type', 'По типу']];
+const TRASH_DAYS = [['7', '7 дней'], ['30', '30 дней'], ['90', '90 дней']];
 const STARTS = [['home', 'Главный экран'], ['primary', 'Память телефона'], ['sd', 'SD-карта']];
 
 /**
@@ -17,6 +18,8 @@ export function openSettings(ctx) {
   const { prefs } = ctx;
   const node = el('', 'layer-root layer-settings');
   const close = pushLayer(node);
+  let info = null;
+  if (ctx.appInfo) ctx.appInfo().then((i) => { info = i; draw(); }).catch(() => {});
 
   const toggle = (key, label, hint) => `
     <button class="row" role="switch" aria-checked="${!!prefs[key]}" data-toggle="${key}">
@@ -32,6 +35,11 @@ export function openSettings(ctx) {
     <div class="segment" role="radiogroup">${items
       .map(([v, l, ic]) => `<button role="radio" aria-checked="${prefs[key] === v}" class="${prefs[key] === v ? 'on' : ''}" data-set="${key}" data-val="${v}">${icon(ic, 18)}<span>${l}</span></button>`)
       .join('')}</div>`;
+
+  const trashText = () => {
+    const t = ctx.trashInfo ? ctx.trashInfo() : null;
+    return t && t.count ? `${t.count} · ${formatSize(t.bytes) || '0 Б'}` : 'Пусто';
+  };
 
   const draw = () => {
     const granted = ctx.hasAccess();
@@ -60,6 +68,16 @@ export function openSettings(ctx) {
           ${toggle('confirmDelete', 'Подтверждать удаление', 'Спрашивать перед тем, как удалить файлы навсегда')}
         </div>
 
+        <h2 class="st-h">Корзина и очистка</h2>
+        <div class="group">
+          ${toggle('useTrash', 'Использовать корзину', 'Удалённые файлы можно восстановить в течение срока хранения')}
+          ${prefs.useTrash ? TRASH_DAYS.map(([v, l]) => choice('trashDays', [v, 'Хранить ' + l], '', String(prefs.trashDays) === v)).join('') : ''}
+        </div>
+        <div class="group">
+          <button class="row" data-act="open-trash"><span class="row-text"><span class="row-label">Открыть корзину</span><small>${trashText()}</small></span>${icon('chevron', 20)}</button>
+          <button class="row" data-act="open-cleaner"><span class="row-text"><span class="row-label">Глубокая очистка</span><small>Дубликаты, похожие фото, мусор, пустые папки</small></span>${icon('chevron', 20)}</button>
+        </div>
+
         <h2 class="st-h">При запуске открывать</h2>
         <div class="group">
           ${STARTS.map(([v, l]) => choice('start', [v, l], '', prefs.start === v)).join('')}
@@ -83,6 +101,13 @@ export function openSettings(ctx) {
           <div class="about-by">Сделано в DataLaw</div>
           <div class="about-tech">Capacitor 8 · ${ctx.native ? 'Android' : 'веб-превью'}</div>
         </div>
+        ${info ? `<div class="group sig">
+          <div class="row static"><span class="row-text"><span class="row-label">Установленная сборка</span>
+            <small>versionCode ${escapeHtml(String(info.versionCode))} · Android API ${escapeHtml(String(info.sdk))}<br>Установлено ${formatDate(info.firstInstall, true)} · обновлено ${formatDate(info.lastUpdate, true)}</small></span></div>
+          <div class="row static"><span class="row-text"><span class="row-label">Подпись приложения (SHA-256)</span>
+            <small class="mono">${escapeHtml(info.signature || 'недоступна')}</small>
+            <small>Если отпечаток у двух сборок одинаковый, новая версия установится поверх старой.</small></span></div>
+        </div>` : ''}
         <div class="group">
           <button class="row danger" data-act="reset"><span class="row-text"><span class="row-label">Сбросить настройки</span><small>Вернуть тему, сортировку и вид по умолчанию</small></span></button>
         </div>
@@ -96,9 +121,13 @@ export function openSettings(ctx) {
     if (t.dataset.toggle) {
       prefs[t.dataset.toggle] = !prefs[t.dataset.toggle];
     } else if (t.dataset.set) {
-      prefs[t.dataset.set] = t.dataset.val;
+      prefs[t.dataset.set] = t.dataset.set === 'trashDays' ? Number(t.dataset.val) : t.dataset.val;
     } else if (t.dataset.act === 'close') {
       return close();
+    } else if (t.dataset.act === 'open-trash') {
+      return ctx.openTrash();
+    } else if (t.dataset.act === 'open-cleaner') {
+      return ctx.openCleaner();
     } else if (t.dataset.act === 'grant') {
       await ctx.requestAccess();
       return draw();

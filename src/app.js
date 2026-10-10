@@ -1,13 +1,16 @@
 import { SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
-import { FM, fileUrl, isNative } from './plugin.js';
+import { FM, CL, fileUrl, isNative } from './plugin.js';
 import { icon, folderGlyph } from './icons.js';
 import { toast, sheet, confirmDialog, promptDialog, infoDialog, handleBack, hasLayers } from './layers.js';
 import { openImageViewer, openEditor } from './viewer.js';
 import { openSettings } from './settings.js';
+import { openCleaner } from './cleaner.js';
+import { openTrash } from './trash.js';
+import { createArchiveFlow, openArchiveSheet } from './archive.js';
 import {
   basename, parentOf, join, escapeHtml, formatSize, formatDate, kindOf, extOf, sortEntries,
-  KIND_ICON, KIND_LABEL, isEditable, debounce,
+  KIND_ICON, KIND_LABEL, isEditable, debounce, isArchive,
 } from './utils.js';
 
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
@@ -15,12 +18,14 @@ const APP_BUILD = typeof __APP_BUILD__ === 'number' ? __APP_BUILD__ : 0;
 
 // ------------------------------------------------------------------ состояние
 const PREFS_KEY = 'filedeck.prefs.v1';
+const BASE_PREFS = { view: 'list', sortBy: 'name', desc: false, hidden: false, theme: 'auto', confirmDelete: true, start: 'home', useTrash: true, trashDays: 30, cleaner: {} };
 const prefs = Object.assign(
-  { view: 'list', sortBy: 'name', desc: false, hidden: false, theme: 'auto', confirmDelete: true, start: 'home' },
+  {},
+  BASE_PREFS,
   (() => { try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; } })()
 );
 if (prefs.theme === 'dark') prefs.theme = 'amoled'; // миграция со старой версии
-const DEFAULTS = JSON.stringify(Object.assign({}, prefs, { view: 'list', sortBy: 'name', desc: false, hidden: false, theme: 'auto', confirmDelete: true, start: 'home' }));
+const DEFAULTS = JSON.stringify(BASE_PREFS);
 const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ } };
 
 const S = {
@@ -36,6 +41,7 @@ const S = {
   chunk: 240,
   scrollMemo: new Map(),
   lastIn: {},          // последняя открытая папка на каждом накопителе
+  trash: { count: 0, bytes: 0 },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -91,6 +97,7 @@ async function checkPermission() {
   }
   if (S.perm) {
     await loadRoots();
+    CL.trashPurge({ days: prefs.trashDays || 30 }).catch(() => {}).then(refreshTrash);
     const first = prefs.start === 'primary' ? primaryRoot() : prefs.start === 'sd' ? S.roots.find((r) => !r.primary) : null;
     if (first && S.path === null && !S.started) {
       S.started = true;
@@ -100,6 +107,16 @@ async function checkPermission() {
   }
   render();
 }
+
+async function refreshTrash() {
+  try {
+    const r = await CL.trashList();
+    S.trash = { count: r.count, bytes: r.bytes };
+  } catch { /* корзины может ещё не быть */ }
+  const b = $('trash-badge');
+  if (b) b.textContent = trashLabel();
+}
+const trashLabel = () => (S.trash.count ? `${S.trash.count} · ${formatSize(S.trash.bytes) || '0 Б'}` : 'пусто');
 
 async function loadRoots() {
   try {
@@ -257,6 +274,23 @@ function switchRoot(which) {
   go(S.lastIn[root.path] || root.path);
 }
 
+function openCleanerPage() {
+  if (!S.perm) return toast('Сначала выдайте доступ к файлам', { error: true });
+  openCleaner({
+    roots: S.roots,
+    prefs,
+    savePrefs,
+    locate: (path) => go(path),
+    viewImage: (e) => openImageViewer([e], 0),
+    onChange: () => { refreshTrash(); S.path ? refresh() : loadRoots().then(() => render({ keepScroll: true })); },
+  });
+}
+
+function openTrashPage() {
+  if (!S.perm) return toast('Сначала выдайте доступ к файлам', { error: true });
+  openTrash({ prefs, onChange: () => { refreshTrash(); S.path ? refresh() : loadRoots().then(() => render({ keepScroll: true })); } });
+}
+
 function openSettingsPage() {
   openSettings({
     prefs,
@@ -267,6 +301,10 @@ function openSettingsPage() {
     native: isNative,
     hasAccess: () => !!S.perm,
     requestAccess: requestPermission,
+    appInfo: () => FM.appInfo(),
+    trashInfo: () => S.trash,
+    openTrash: openTrashPage,
+    openCleaner: openCleanerPage,
     reset: () => { Object.assign(prefs, JSON.parse(DEFAULTS)); savePrefs(); },
   });
 }
@@ -325,6 +363,10 @@ function homeHtml() {
   return `
     <section class="home">
       <div class="storages">${cards || '<div class="muted pad">Накопители не найдены</div>'}</div>
+      <div class="tools">
+        <button class="tool main" data-act="open-cleaner">${icon('sparkle', 26)}<b>Очистка</b><small>дубликаты, мусор, пустые папки</small></button>
+        <button class="tool" data-act="open-trash">${icon('trash', 26)}<b>Корзина</b><small id="trash-badge">${trashLabel()}</small></button>
+      </div>
       <h2 class="section">Быстрый доступ</h2>
       <div class="quick-grid">${quick}</div>
     </section>`;
@@ -519,6 +561,8 @@ content.addEventListener('click', (ev) => {
   const act = actEl?.dataset.act;
   if (act === 'grant') return requestPermission();
   if (act === 'up') return up();
+  if (act === 'open-cleaner') return openCleanerPage();
+  if (act === 'open-trash') return openTrashPage();
   if (longFired) { longFired = false; return; }
 
   const pathBtn = ev.target.closest('[data-path]');
@@ -551,16 +595,7 @@ function openEntry(e) {
     const images = viewCache.filter((x) => kindOf(x) === 'image');
     return openImageViewer(images, Math.max(0, images.findIndex((x) => x.path === e.path)));
   }
-  if (extOf(e.name) === 'zip') {
-    return sheet({
-      title: e.name,
-      subtitle: formatSize(e.size),
-      items: [
-        { icon: 'unzip', label: 'Распаковать здесь', onClick: () => unzip(e) },
-        { icon: 'external', label: 'Открыть в приложении', onClick: () => openExternal(e) },
-      ],
-    });
-  }
+  if (isArchive(e.name)) return openArchiveSheet(e, { onDone: refresh, onLocate: go });
   if (isEditable(e)) {
     return sheet({
       title: e.name,
@@ -604,19 +639,24 @@ function report(res, verb) {
   else toast(`${verb}: ${res.done}`);
 }
 
-async function deletePaths(paths) {
+async function deletePaths(paths, { permanent = false } = {}) {
   const names = paths.map(basename);
-  const ok = !prefs.confirmDelete || await confirmDialog({
-    title: paths.length === 1 ? `Удалить «${names[0]}»?` : `Удалить выбранное (${paths.length})?`,
-    text: 'Файлы будут удалены без возможности восстановления.',
+  const toTrash = prefs.useTrash && !permanent;
+  const what = paths.length === 1 ? `«${names[0]}»` : `выбранное (${paths.length})`;
+  const ok = !prefs.confirmDelete && toTrash ? true : await confirmDialog({
+    title: toTrash ? `Переместить ${what} в корзину?` : `Удалить ${what} навсегда?`,
+    text: toTrash ? `Файлы хранятся в корзине ${prefs.trashDays} дн., их можно восстановить.` : 'Файлы будут удалены без возможности восстановления.',
+    okText: toTrash ? 'В корзину' : 'Удалить',
+    danger: !toTrash,
   });
   if (!ok) return;
   try {
-    const res = await FM.remove({ paths });
+    const res = await (toTrash ? CL.trashMove({ paths }) : FM.remove({ paths }));
     S.selection.clear();
     if (S.clip) S.clip.paths = S.clip.paths.filter((p) => !paths.includes(p));
     if (S.clip && !S.clip.paths.length) S.clip = null;
-    report(res, 'Удалено');
+    report(res, toTrash ? 'В корзине' : 'Удалено');
+    if (toTrash) refreshTrash();
   } catch (e) {
     toast(e.message || 'Не удалось удалить', { error: true });
   }
@@ -665,30 +705,12 @@ async function shareSelected() {
 
 async function zipSelected() {
   const sel = selectedEntries();
-  const def = sel.length === 1 ? sel[0].name.replace(/\.[^.]+$/, '') : 'Архив';
-  const name = await promptDialog({ title: 'Создать архив', value: `${def}.zip`, okText: 'Архивировать', selectBase: true });
-  if (!name || !name.trim()) return;
-  toast('Архивируем…', { ms: 600000 });
-  try {
-    await FM.zip({ paths: sel.map((e) => e.path), dest: S.path || parentOf(sel[0].path), name: name.trim() });
+  if (!sel.length) return;
+  const res = await createArchiveFlow({ entries: sel, destDir: S.path || parentOf(sel[0].path) });
+  if (res) {
     S.selection.clear();
-    toast('Архив создан');
-  } catch (e) {
-    toast(e.message || 'Не удалось создать архив', { error: true });
+    refresh();
   }
-  refresh();
-}
-
-async function unzip(e) {
-  toast('Распаковываем…', { ms: 600000 });
-  try {
-    await FM.unzip({ path: e.path, dest: parentOf(e.path) });
-    S.selection.clear();
-    toast('Распаковано');
-  } catch (err) {
-    toast(err.message || 'Не удалось распаковать', { error: true });
-  }
-  refresh();
 }
 
 async function showProps(e) {
@@ -720,11 +742,12 @@ function moreForSelection() {
   const one = sel.length === 1 ? sel[0] : null;
   const items = [];
   if (one) items.push({ icon: 'edit', label: 'Переименовать', onClick: () => renameEntry(one) });
-  items.push({ icon: 'archive', label: 'Добавить в архив (.zip)', onClick: zipSelected });
-  if (one && extOf(one.name) === 'zip') items.push({ icon: 'unzip', label: 'Распаковать здесь', onClick: () => unzip(one) });
+  items.push({ icon: 'archive', label: 'Добавить в архив…', hint: 'ZIP, 7z, TAR · пароль, уровень сжатия', onClick: zipSelected });
+  if (one && isArchive(one.name)) items.push({ icon: 'unzip', label: 'Распаковать…', hint: 'Просмотр содержимого и выбор файлов', onClick: () => { S.selection.clear(); render({ keepScroll: true }); openArchiveSheet(one, { onDone: refresh, onLocate: go }); } });
   if (one && !one.dir) items.push({ icon: 'external', label: 'Открыть в приложении', onClick: () => openExternal(one) });
   if (one && isEditable(one)) items.push({ icon: 'doc', label: 'Открыть в редакторе', onClick: () => openEditor(one, { onSaved: refresh }) });
   if (one) items.push({ icon: 'info', label: 'Свойства', onClick: () => showProps(one) });
+  if (prefs.useTrash) items.push({ divider: true }, { icon: 'trash', label: 'Удалить навсегда', danger: true, onClick: () => deletePaths(sel.map((e) => e.path), { permanent: true }) });
   sheet({ title: one ? one.name : `Выбрано: ${sel.length}`, items });
 }
 
@@ -791,7 +814,7 @@ function onBackButton() {
 
 CapApp.addListener('backButton', onBackButton);
 // Возврат с экрана системных настроек — перепроверяем разрешение
-CapApp.addListener('resume', () => { if (!S.perm) checkPermission(); else loadRoots().then(() => render({ keepScroll: true })); });
+CapApp.addListener('resume', () => { if (!S.perm) checkPermission(); else { loadRoots().then(() => render({ keepScroll: true })); refreshTrash(); } });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && S.perm === false) checkPermission();
 });

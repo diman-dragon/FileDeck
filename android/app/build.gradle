@@ -13,8 +13,15 @@ def computedVersionCode = versionParts[0].toInteger() * 10000 + versionParts[1].
 // ---------------------------------------------------------------- подпись
 // 1) sideload-ключ из репозитория — для debug/CI/установки «для себя» (один и тот же на всех машинах);
 // 2) android/keystore.properties (если создан) — ваш личный ключ для Google Play / публичных релизов.
+def sideloadPropsFile = rootProject.file('signing/signing.properties')
 def sideloadProps = new Properties()
-rootProject.file('signing/signing.properties').withInputStream { sideloadProps.load(it) }
+if (!sideloadPropsFile.exists() || !rootProject.file('signing/filedeck-sideload.jks').exists()) {
+    throw new GradleException(
+        'Нет ключа подписи android/signing/ (filedeck-sideload.jks и signing.properties). ' +
+        'Без него APK подпишется случайным ключом и не обновится поверх установленной версии. ' +
+        'Верните папку android/signing/ из репозитория или архива.')
+}
+sideloadPropsFile.withInputStream { sideloadProps.load(it) }
 def storePropsFile = rootProject.file('keystore.properties')
 def storeProps = new Properties()
 if (storePropsFile.exists()) {
@@ -67,6 +74,13 @@ android {
     bundle {
         language { enableSplit = false }
     }
+    packaging {
+        resources {
+            // библиотеки архивации приносят одинаковые служебные файлы — берём первый, чтобы сборка не падала
+            pickFirsts += ['META-INF/LICENSE*', 'META-INF/NOTICE*', 'META-INF/DEPENDENCIES', 'META-INF/INDEX.LIST']
+            excludes += ['META-INF/versions/**', 'META-INF/*.kotlin_module']
+        }
+    }
 }
 
 repositories {
@@ -81,6 +95,11 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Архиватор: ZIP (пароль AES-256), 7z / TAR / GZ / BZ2 / XZ, RAR (распаковка)
+    implementation 'net.lingala.zip4j:zip4j:2.11.5'
+    implementation 'org.apache.commons:commons-compress:1.26.2'
+    implementation 'org.tukaani:xz:1.9'
+    implementation 'com.github.junrar:junrar:7.5.5'
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
