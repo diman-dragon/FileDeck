@@ -167,7 +167,21 @@ const emitter = () => {
 export function createMockCleaner() {
   const ev = emitter();
   let cancelled = false;
+  let trashCancelled = false;
   const trash = [];
+  const mockTrashDelete = async (ids) => {
+    trashCancelled = false;
+    let done = 0, bytes = 0;
+    for (const id of ids) {
+      if (trashCancelled) return { done, bytes, cancelled: true };
+      const i = trash.findIndex((t) => t.id === id); if (i < 0) continue;
+      const t = trash[i];
+      ev.emit('trashProgress', { fraction: (done + 0.5) / ids.length, current: t.name }); await sleep(250);
+      bytes += t.size; trash.splice(i, 1); done++;
+      ev.emit('trashProgress', { fraction: done / ids.length, current: t.name });
+    }
+    return { done, bytes, cancelled: false };
+  };
   const stripCopy = (n) => n.replace(/ \(\d+\)(?=\.[^.]+$|$)/, '').replace(/_edit(?=\.[^.]+$)/, '');
   const underRoots = (k, roots) => roots.some((r) => k === r || k.startsWith(r + '/'));
 
@@ -232,16 +246,20 @@ export function createMockCleaner() {
     async trashList() { await sleep(30); const items = trash.map(({ nodes, ...rest }) => rest).sort((a, b) => b.time - a.time); return { items, count: items.length, bytes: items.reduce((a, i) => a + i.size, 0) }; },
     async trashRestore({ ids }) {
       let done = 0; const restored = [];
-      for (const id of ids) {
+      trashCancelled = false;
+      for (const [n, id] of ids.entries()) {
+        if (trashCancelled) return { done, failed: [], restored, cancelled: true };
         const i = trash.findIndex((t) => t.id === id); if (i < 0) continue;
         const t = trash[i]; let target = t.orig; if (fs.has(target)) target = unique(parentOf(t.orig), basename(t.orig));
         for (const [k, v] of t.nodes) fs.set(target + k.slice(t.orig.length), v);
         trash.splice(i, 1); restored.push(target); done++;
+        ev.emit('trashProgress', { fraction: (n + 1) / ids.length, current: basename(t.orig) }); await sleep(250);
       }
-      await sleep(80); return { done, failed: [], restored };
+      return { done, failed: [], restored, cancelled: false };
     },
-    async trashDelete({ ids }) { let done = 0, bytes = 0; for (const id of ids) { const i = trash.findIndex((t) => t.id === id); if (i >= 0) { bytes += trash[i].size; trash.splice(i, 1); done++; } } await sleep(60); return { done, bytes }; },
-    async trashEmpty() { const done = trash.length, bytes = trash.reduce((a, t) => a + t.size, 0); trash.length = 0; await sleep(60); return { done, bytes }; },
+    async trashDelete({ ids }) { return mockTrashDelete(ids); },
+    async trashEmpty() { return mockTrashDelete(trash.map((t) => t.id)); },
+    async trashCancel() { trashCancelled = true; },
     async trashPurge({ days = 30 }) { const lim = Date.now() - days * DAY; let done = 0; for (let i = trash.length - 1; i >= 0; i--) if (trash[i].time < lim) { trash.splice(i, 1); done++; } return { done, bytes: 0 }; },
   };
 }

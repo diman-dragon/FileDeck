@@ -82,6 +82,8 @@ public class CleanerPlugin extends Plugin {
     private final ExecutorService pool = Executors.newFixedThreadPool(3);
     private volatile boolean cancelRequested = false;
     private volatile boolean scanning = false;
+    private volatile boolean trashCancel = false;
+    private long lastTrashEmit = 0;
 
     private interface Job {
         void run() throws Exception;
@@ -952,6 +954,69 @@ public class CleanerPlugin extends Plugin {
         }
     }
 
+    /** Прогресс операций корзины: fraction 0..1 и имя текущего файла. */
+    private void emitTrash(double fraction, String current, boolean force) {
+        long now = SystemClock.elapsedRealtime();
+        if (!force && now - lastTrashEmit < 80) return;
+        lastTrashEmit = now;
+        JSObject o = new JSObject();
+        o.put("fraction", Math.max(0, Math.min(1, fraction)));
+        if (current != null) o.put("current", current);
+        notifyListeners("trashProgress", o);
+    }
+
+    @PluginMethod
+    public void trashCancel(PluginCall call) {
+        trashCancel = true;
+        call.resolve();
+    }
+
+    /** Удаляет записи корзины с прогрессом по байтам. Возвращает {done, bytes, cancelled}. */
+    private JSObject deleteEntries(List<TrashEntry> targets, boolean sweepOrphans) {
+        trashCancel = false;
+        long totalBytes = 0;
+        for (TrashEntry t : targets) totalBytes += t.meta.optLong("size");
+        final long total = totalBytes;
+        final long[] doneBytes = { 0 };
+        final int count = targets.size();
+        int done = 0;
+        long freed = 0;
+        boolean cancelled = false;
+        for (TrashEntry t : targets) {
+            if (trashCancel) { cancelled = true; break; }
+            final int index = done;
+            long size = t.meta.optLong("size");
+            boolean ok = FsUtil.deleteRecursive(t.content, (bytes, name) -> {
+                doneBytes[0] += bytes;
+                emitTrash(total > 0 ? (double) doneBytes[0] / total : (double) index / Math.max(1, count), name, false);
+            });
+            if (ok) {
+                //noinspection ResultOfMethodCallIgnored
+                t.metaFile.delete();
+                done++;
+                freed += size;
+            }
+            if (total == 0) emitTrash((double) done / Math.max(1, count), t.meta.optString("name"), false);
+        }
+        if (sweepOrphans && !cancelled) {
+            // осиротевшие файлы без метаданных
+            for (File root : FsUtil.storageRoots(getContext())) {
+                File[] rest = new File(root, TRASH_DIR).listFiles();
+                if (rest == null) continue;
+                for (File f : rest) {
+                    if (f.getName().equals(".nomedia")) continue;
+                    FsUtil.deleteRecursive(f);
+                }
+            }
+        }
+        emitTrash(1, null, true);
+        JSObject ret = new JSObject();
+        ret.put("done", done);
+        ret.put("bytes", freed);
+        ret.put("cancelled", cancelled);
+        return ret;
+    }
+
     @PluginMethod
     public void trashMove(final PluginCall call) {
         final List<String> paths = strings(call.getArray("paths"));
@@ -1037,9 +1102,16 @@ public class CleanerPlugin extends Plugin {
         async(call, () -> {
             JSArray failed = new JSArray();
             JSArray restored = new JSArray();
+            List<TrashEntry> targets = new ArrayList<>();
+            for (TrashEntry t : readTrash()) if (ids.contains(t.id())) targets.add(t);
+            trashCancel = false;
+            boolean cancelled = false;
             int done = 0;
-            for (TrashEntry t : readTrash()) {
-                if (!ids.contains(t.id())) continue;
+            int step = 0;
+            for (TrashEntry t : targets) {
+                if (trashCancel) { cancelled = true; break; }
+                emitTrash((double) step / Math.max(1, targets.size()), t.meta.optString("name"), false);
+                step++;
                 try {
                     File orig = new File(t.meta.optString("orig"));
                     File parent = orig.getParentFile();
@@ -1055,10 +1127,12 @@ public class CleanerPlugin extends Plugin {
                     failed.put(t.id());
                 }
             }
+            emitTrash(1, null, true);
             JSObject ret = new JSObject();
             ret.put("done", done);
             ret.put("failed", failed);
             ret.put("restored", restored);
+            ret.put("cancelled", cancelled);
             call.resolve(ret);
         });
     }
@@ -1067,53 +1141,15 @@ public class CleanerPlugin extends Plugin {
     public void trashDelete(final PluginCall call) {
         final Set<String> ids = new HashSet<>(strings(call.getArray("ids")));
         async(call, () -> {
-            int done = 0;
-            long freed = 0;
-            for (TrashEntry t : readTrash()) {
-                if (!ids.contains(t.id())) continue;
-                long size = t.meta.optLong("size");
-                if (FsUtil.deleteRecursive(t.content)) {
-                    //noinspection ResultOfMethodCallIgnored
-                    t.metaFile.delete();
-                    done++;
-                    freed += size;
-                }
-            }
-            JSObject ret = new JSObject();
-            ret.put("done", done);
-            ret.put("bytes", freed);
-            call.resolve(ret);
+            List<TrashEntry> targets = new ArrayList<>();
+            for (TrashEntry t : readTrash()) if (ids.contains(t.id())) targets.add(t);
+            call.resolve(deleteEntries(targets, false));
         });
     }
 
     @PluginMethod
     public void trashEmpty(final PluginCall call) {
-        async(call, () -> {
-            int done = 0;
-            long freed = 0;
-            for (TrashEntry t : readTrash()) {
-                long size = t.meta.optLong("size");
-                if (FsUtil.deleteRecursive(t.content)) {
-                    //noinspection ResultOfMethodCallIgnored
-                    t.metaFile.delete();
-                    done++;
-                    freed += size;
-                }
-            }
-            // осиротевшие файлы без метаданных
-            for (File root : FsUtil.storageRoots(getContext())) {
-                File[] rest = new File(root, TRASH_DIR).listFiles();
-                if (rest == null) continue;
-                for (File f : rest) {
-                    if (f.getName().equals(".nomedia")) continue;
-                    FsUtil.deleteRecursive(f);
-                }
-            }
-            JSObject ret = new JSObject();
-            ret.put("done", done);
-            ret.put("bytes", freed);
-            call.resolve(ret);
-        });
+        async(call, () -> call.resolve(deleteEntries(readTrash(), true)));
     }
 
     @PluginMethod

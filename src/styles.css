@@ -79,7 +79,7 @@ input, textarea { font: inherit; color: inherit; -webkit-user-select: text; user
 .seg.on { background: var(--manila); color: var(--on-manila); }
 .seg.off { opacity: 0.45; }
 
-.sub { display: flex; align-items: flex-end; gap: 2px; padding: 0 6px; }
+.subbar { display: flex; align-items: flex-end; gap: 2px; padding: 0 6px; }
 .crumbbar { align-items: flex-end; padding-right: 4px; }
 .crumbbar .icon-btn { margin-bottom: 0; align-self: center; }
 .crumbs { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 3px; overflow-x: auto; scrollbar-width: none; padding: 0 4px; }
@@ -132,7 +132,7 @@ input, textarea { font: inherit; color: inherit; -webkit-user-select: text; user
 .storage-foot { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .storage-foot b { color: var(--text); font-weight: 650; }
 .section { margin: 26px 4px 12px; font-size: 15px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
-.quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.quick-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .quick { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 14px; border-radius: 18px; background: var(--surface-2); border: 1px solid var(--line); font-size: 14px; font-weight: 600; text-align: left; transition: transform 0.12s; }
 .quick:active { transform: scale(0.97); }
 .quick-ic { color: var(--manila); }
@@ -161,10 +161,10 @@ input, textarea { font: inherit; color: inherit; -webkit-user-select: text; user
 .selecting .tick { display: grid; }
 .item.selected .tick { background: var(--manila); border-color: var(--manila); color: var(--on-manila); }
 
-.items.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 14px; }
-.items.grid .item { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 10px; border-radius: 18px; background: var(--surface-2); cursor: pointer; border: 2px solid transparent; }
+.items.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px 14px; }
+.items.grid .item { min-width: 0; position: relative; display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 10px; border-radius: 18px; background: var(--surface-2); cursor: pointer; border: 2px solid transparent; }
 .items.grid .item.selected { border-color: var(--manila); }
-.items.grid .lead { width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; }
+.items.grid .lead { width: 100%; min-width: 0; height: auto; aspect-ratio: 1; border-radius: 12px; }
 .items.grid .lead.k-folder { background: transparent; }
 .items.grid .lead .ext { display: block; position: absolute; left: 6px; bottom: 5px; font-size: 9px; }
 .items.grid .lead img + .ext, .items.grid .lead.k-folder .ext { display: none; }
@@ -173,7 +173,7 @@ input, textarea { font: inherit; color: inherit; -webkit-user-select: text; user
 .items.grid .tick { position: absolute; top: 12px; left: 12px; background: color-mix(in oklab, #000 45%, transparent); border-color: #fff; }
 .items.grid .item.selected .tick { background: var(--manila); border-color: var(--manila); }
 .folder-glyph { display: block; }
-.items.grid .folder-glyph { width: 62%; height: auto; }
+.items.grid .folder-glyph { width: 62%; max-width: 100%; height: auto; }
 
 /* ---------- нижняя панель ---------- */
 .dock { position: fixed; left: calc(var(--sal) + 12px); right: calc(var(--sar) + 12px); bottom: calc(var(--sab) + 12px); z-index: 20; background: var(--surface-3); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); transition: transform 0.2s ease, opacity 0.2s ease; }
@@ -306,8 +306,8 @@ button.row:active { background: color-mix(in oklab, var(--text) 8%, transparent)
 .ed-area { flex: 1; width: 100%; resize: none; border: 0; outline: none; background: var(--surface); padding: 16px 16px calc(var(--sab) + 16px); font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; tab-size: 2; white-space: pre; overflow: auto; }
 
 @media (min-width: 560px) {
-  .items.grid { grid-template-columns: repeat(5, 1fr); }
-  .quick-grid { grid-template-columns: repeat(6, 1fr); }
+  .items.grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .quick-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

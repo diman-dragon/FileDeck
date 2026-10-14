@@ -1,6 +1,7 @@
-import { CL, FM } from './plugin.js';
+import { CL } from './plugin.js';
 import { icon, folderGlyph } from './icons.js';
-import { pushLayer, el, toast, sheet, confirmDialog } from './layers.js';
+import { pushLayer, el, toast, confirmDialog } from './layers.js';
+import { withTrashProgress } from './trash-progress.js';
 import { escapeHtml, formatSize, formatDate, kindOf, KIND_ICON, parentOf } from './utils.js';
 
 const plural = (n, [one, few, many]) => {
@@ -20,6 +21,7 @@ export async function openTrash(ctx) {
   let bytes = 0;
   let loading = true;
   let closed = false;
+  let busy = false; // идёт восстановление или удаление — повторные нажатия игнорируем
   const close = pushLayer(node, { onBack: () => { closed = true; close(); } });
 
   const left = (t) => Math.max(0, Math.ceil((t + days * 86400000 - Date.now()) / 86400000));
@@ -81,12 +83,16 @@ export async function openTrash(ctx) {
       return draw();
     }
     if (act === 'restore') {
+      if (busy) return;
+      busy = true;
       try {
-        const res = await CL.trashRestore({ ids: [...selected] });
-        toast(`Восстановлено: ${res.done}${res.failed?.length ? `, не удалось: ${res.failed.length}` : ''}`, { error: !!res.failed?.length });
+        const res = await withTrashProgress('Восстанавливаем…', () => CL.trashRestore({ ids: [...selected] }));
+        const failed = res.failed?.length || 0;
+        toast(`${res.cancelled ? 'Отменено. ' : ''}Восстановлено: ${res.done}${failed ? `, не удалось: ${failed}` : ''}`, { error: !!failed });
         selected.clear();
         ctx.onChange && ctx.onChange();
       } catch (e) { toast(e.message || 'Не удалось восстановить', { error: true }); }
+      busy = false;
       return load();
     }
     if (act === 'delete' || act === 'empty') {
@@ -96,13 +102,20 @@ export async function openTrash(ctx) {
         text: 'Файлы будут удалены без возможности восстановления.',
         okText: all ? 'Очистить' : 'Удалить',
       });
-      if (!ok) return;
+      if (!ok || busy) return;
+      busy = true;
+      const expected = all ? items.length : selected.size;
       try {
-        const res = await (all ? CL.trashEmpty() : CL.trashDelete({ ids: [...selected] }));
-        toast(`Удалено: ${res.done} · освобождено ${formatSize(res.bytes) || '0 Б'}`);
+        const res = await withTrashProgress(all ? 'Очищаем корзину…' : 'Удаляем…', () => (all ? CL.trashEmpty() : CL.trashDelete({ ids: [...selected] })));
+        const failed = res.cancelled ? 0 : Math.max(0, expected - res.done);
+        const freed = `освобождено ${formatSize(res.bytes) || '0 Б'}`;
+        if (res.cancelled) toast(`Отменено. Удалено: ${res.done} · ${freed}`);
+        else if (failed) toast(`Удалено: ${res.done}, не удалось: ${failed}`, { error: true, ms: 4200 });
+        else toast(`Удалено: ${res.done} · ${freed}`);
         selected.clear();
         ctx.onChange && ctx.onChange();
       } catch (e) { toast(e.message || 'Не удалось удалить', { error: true }); }
+      busy = false;
       return load();
     }
     if (!row) return;
@@ -111,7 +124,6 @@ export async function openTrash(ctx) {
     draw();
   });
 
-  void sheet; void FM;
   draw();
   load();
 }

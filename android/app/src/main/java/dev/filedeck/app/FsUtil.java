@@ -30,15 +30,28 @@ final class FsUtil {
         }
     }
 
+    /** Получает размер каждого удалённого файла — для полосы прогресса. */
+    interface DeleteProgress {
+        void onDeleted(long bytes, String name);
+    }
+
     static boolean deleteRecursive(File f) {
+        return deleteRecursive(f, null);
+    }
+
+    static boolean deleteRecursive(File f, DeleteProgress progress) {
         boolean ok = true;
         if (f.isDirectory() && !isSymlink(f)) {
             File[] ch = f.listFiles();
             if (ch != null) {
-                for (File c : ch) ok &= deleteRecursive(c);
+                for (File c : ch) ok &= deleteRecursive(c, progress);
             }
+            return f.delete() && ok;
         }
-        return f.delete() && ok;
+        long len = f.length();
+        boolean deleted = f.delete();
+        if (deleted && progress != null) progress.onDeleted(len, f.getName());
+        return deleted && ok;
     }
 
     static void copyRecursive(File src, File dst) throws IOException {

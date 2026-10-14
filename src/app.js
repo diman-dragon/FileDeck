@@ -41,6 +41,7 @@ const S = {
   chunk: 240,
   scrollMemo: new Map(),
   lastIn: {},          // последняя открытая папка на каждом накопителе
+  history: [],         // пройденные места (path или null — главный экран), для системной кнопки «Назад»
   trash: { count: 0, bytes: 0 },
 };
 
@@ -101,7 +102,7 @@ async function checkPermission() {
     const first = prefs.start === 'primary' ? primaryRoot() : prefs.start === 'sd' ? S.roots.find((r) => !r.primary) : null;
     if (first && S.path === null && !S.started) {
       S.started = true;
-      return go(first.path);
+      return go(first.path, { replace: true }); // стартовый экран — дно истории
     }
     S.started = true;
   }
@@ -153,7 +154,21 @@ async function load(path, { keepScroll = false } = {}) {
   render({ keepScroll });
 }
 
-export function go(path) {
+const HISTORY_LIMIT = 100;
+
+/** Запоминает, откуда ушли. Переход на место, с которого пришли, считается шагом назад. */
+function trackHistory(path) {
+  const top = S.history[S.history.length - 1];
+  if (S.history.length && top === path) S.history.pop();
+  else if (S.path !== path) {
+    S.history.push(S.path);
+    if (S.history.length > HISTORY_LIMIT) S.history.shift();
+  }
+}
+
+/** replace: true — не записывать в историю (стартовый экран и шаг назад). */
+export function go(path, { replace = false } = {}) {
+  if (!replace) trackHistory(path);
   if (S.path) S.scrollMemo.set(S.path, content.scrollTop);
   S.search = null;
   S.selection.clear();
@@ -226,19 +241,19 @@ function renderTopbar() {
   let sub = '';
   let crumbs = false;
   if (n > 0) {
-    sub = `<div class="sub selbar">
+    sub = `<div class="subbar selbar">
       <button class="icon-btn" data-act="clear-sel" aria-label="Отменить выбор">${icon('close')}</button>
       <div class="sel-count"><b>${n}</b><span>${plural(n, ['выбран', 'выбрано', 'выбрано'])}</span></div>
       <button class="icon-btn" data-act="select-all" aria-label="Выбрать всё">${icon('selectAll')}</button>
     </div>`;
   } else if (inSearch()) {
-    sub = `<div class="sub searchbar">
+    sub = `<div class="subbar searchbar">
       <input id="search-input" type="search" inputmode="search" enterkeyhint="search" placeholder="${S.path ? 'Поиск в этой папке' : 'Поиск по памяти'}" value="${escapeHtml(S.search.q)}" autocomplete="off" />
       ${S.search.q ? `<button class="icon-btn" data-act="clear-query" aria-label="Очистить">${icon('close')}</button>` : ''}
     </div>`;
   } else if (S.path && S.perm) {
     crumbs = true;
-    sub = `<div class="sub crumbbar">
+    sub = `<div class="subbar crumbbar">
       <nav class="crumbs" aria-label="Путь">${crumbsHtml()}</nav>
       <button class="icon-btn small" data-act="toggle-view" aria-label="Сменить вид">${icon(prefs.view === 'list' ? 'grid' : 'list', 20)}</button>
     </div>`;
@@ -806,9 +821,8 @@ function onBackButton() {
   if (handleBack()) return;
   if (S.selection.size) { S.selection.clear(); return render({ keepScroll: true }); }
   if (inSearch()) return exitSearch();
-  if (S.clip && !S.path) { /* буфер остаётся, просто выходим */ }
-  if (up()) return;
-  CapApp.exitApp();
+  // шаг назад по истории; на стартовом экране (история пуста) остаёмся, приложение не закрываем
+  if (S.history.length) go(S.history.pop(), { replace: true });
 }
 
 CapApp.addListener('backButton', onBackButton);
