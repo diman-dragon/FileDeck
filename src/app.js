@@ -4,7 +4,7 @@ import { FM, CL, fileUrl, isNative } from './plugin.js';
 import { icon, folderGlyph } from './icons.js';
 import { toast, sheet, confirmDialog, promptDialog, infoDialog, handleBack, hasLayers } from './layers.js';
 import { openImageViewer, openEditor } from './viewer.js';
-import { openSettings } from './settings.js';
+import { openSettings } from './settings/index.js';
 import { openCleaner } from './cleaner.js';
 import { openTrash } from './trash.js';
 import { createArchiveFlow, openArchiveSheet } from './archive.js';
@@ -301,7 +301,6 @@ function openSettingsPage() {
     native: isNative,
     hasAccess: () => !!S.perm,
     requestAccess: requestPermission,
-    appInfo: () => FM.appInfo(),
     trashInfo: () => S.trash,
     openTrash: openTrashPage,
     openCleaner: openCleanerPage,
