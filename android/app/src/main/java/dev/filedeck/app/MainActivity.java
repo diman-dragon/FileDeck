@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         // Плагины нужно зарегистрировать до super.onCreate()
         registerPlugin(FileManagerPlugin.class);
         registerPlugin(CleanerPlugin.class);
+        registerPlugin(TrashPlugin.class);
         registerPlugin(ArchivePlugin.class);
         super.onCreate(savedInstanceState);
     }

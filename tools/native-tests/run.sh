@@ -13,6 +13,6 @@ OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
 javac -encoding UTF-8 -d "$OUT" -cp "$LIBS" \
   $(find stubs fakes test -name '*.java' | grep -v -e FileProvider -e BridgeActivity) \
-  "$SRC/FsUtil.java" "$SRC/CleanerPlugin.java" "$SRC/ArchivePlugin.java"
+  $(find "$SRC" -name '*.java' | grep -v -e FileManagerPlugin -e FileOpener -e MainActivity)
 LC_ALL=C.UTF-8 java -Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8 -Dstdout.encoding=UTF-8 \
   -Djava.awt.headless=true -cp "$OUT:$LIBS" dev.filedeck.app.FdTest

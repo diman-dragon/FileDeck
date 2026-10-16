@@ -1,5 +1,5 @@
 // Строки экранов настроек. Каждая функция возвращает HTML-строку.
-import { icon } from '../icons.js';
+import { icon } from '../icons/icon.js';
 
 /** Переключатель on/off для prefs[key]. */
 export const toggleRow = (prefs, key, label, hint) => `
@@ -14,15 +14,6 @@ export const choiceRow = (key, value, label, hint, active) => `
     <span class="row-text"><span class="row-label">${label}</span>${hint ? `<small>${hint}</small>` : ''}</span>
     <span class="radio ${active ? 'on' : ''}">${active ? icon('check', 16) : ''}</span>
   </button>`;
-
-/** Сегментный переключатель: items = [[value, label, iconName]]. */
-export const segmentRow = (prefs, key, items) => `
-  <div class="segment" role="radiogroup">${items
-    .map(
-      ([v, l, ic]) =>
-        `<button role="radio" aria-checked="${prefs[key] === v}" class="${prefs[key] === v ? 'on' : ''}" data-set="${key}" data-val="${v}">${icon(ic, 18)}<span>${l}</span></button>`
-    )
-    .join('')}</div>`;
 
 /** Строка-кнопка со стрелкой: открывает подэкран или действие. */
 export const linkRow = (act, label, hint) => `

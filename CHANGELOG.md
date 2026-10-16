@@ -2,6 +2,32 @@
 
 Версия берётся из `package.json` (`npm run bump`). versionCode Android = major·10000 + minor·100 + patch.
 
+## 2.0.6 — 2026-10-15
+**Рефакторинг: один файл — одна ответственность**
+- Интерфейс: `cleaner.js` → `cleaner/` (сканирование, правила, удаление, экраны), `trash.js` → `trash/`,
+  `archive.js` → `archive/`, `mock-fs.js` → `mock/`, `plugin.js` → реестр плагинов + `platform`, `file-url`, `listen`,
+  `styles.css` → 20 частей в `styles/` (итоговый CSS совпадает с прежним байт в байт).
+- Android: `FileManagerPlugin` стал тонким мостом (`FileBrowser`, `FileOps`, `TextFiles`, `FileOpener`, `FileJson`, `MimeTypes`);
+  `CleanerPlugin` → `Scanner`, `DuplicateFinder`, `SimilarImageFinder`, `FileKinds`; корзина вынесена в отдельный плагин
+  `Trash` (`TrashPlugin` + `TrashStore`), в JS он называется `TR`; `ArchivePlugin` → `ArchiveCreator`, `ArchiveLister`,
+  `ArchiveExtractor`, `ArchiveFormat`, приёмники и источники по файлу на формат.
+- Общие `JobRunner`, `Cancelled`, `JsArrays`; дубли файловых утилит заменены на `FsUtil`.
+- Убран неиспользуемый `appInfo` (сведения о сборке и подпись).
+- Нативные тесты: добавлены проверки файловых операций, всего 100.
+
+## 2.0.5 — 2026-10-15
+**Иконка**
+- Новая иконка: жёлтая папка со стилизованной буквой D внутри на тёмно-синем фоне (обычная, круглая, адаптивная, монохромная и заставка).
+
+**Настройки**
+- Убрано «Вид списка»: он переключается кнопкой на каждом экране.
+
+**Код**
+- Рефакторинг, одна ответственность на файл: `utils.js` → `format`, `path`, `html`, `file-kinds`, `archive-types`, `sort`, `debounce`;
+  `layers.js` → `layers/`; `icons.js` → `icons/`; `viewer.js` → `viewer/`; `app.js` → 33 модуля в `src/app/`.
+- `plural` больше не дублируется в четырёх файлах.
+- Подписки на «Назад» и «Возврат в приложение» выполняются по очереди.
+
 ## 2.0.4 — 2026-10-14
 **Навигация**
 - Системная кнопка «Назад» возвращает на шаг назад по истории переходов (папки, переключение «Память / SD-карта»,

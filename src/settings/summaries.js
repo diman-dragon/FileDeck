@@ -1,5 +1,5 @@
 // Короткие подписи под пунктами главного меню настроек.
-import { formatSize } from '../utils.js';
+import { formatSize } from '../format.js';
 import { THEMES, SORTS, STARTS, labelOf } from './options.js';
 
 export const trashSummary = (ctx) => {
@@ -7,8 +7,7 @@ export const trashSummary = (ctx) => {
   return t && t.count ? `${t.count} · ${formatSize(t.bytes) || '0 Б'}` : 'Пусто';
 };
 
-export const appearanceSummary = ({ prefs }) =>
-  `${labelOf(THEMES, prefs.theme)} · ${prefs.view === 'grid' ? 'сетка' : 'список'}`;
+export const appearanceSummary = ({ prefs }) => labelOf(THEMES, prefs.theme);
 
 export const filesSummary = ({ prefs }) => `${labelOf(SORTS, prefs.sortBy)}${prefs.hidden ? ' · скрытые видны' : ''}`;
 

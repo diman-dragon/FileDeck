@@ -1,6 +1,6 @@
 # FileDeck by DataLaw — файловый менеджер для Android (Capacitor 8)
 
-Текущая версия: **2.0.4** (см. `CHANGELOG.md`).
+Текущая версия: **2.0.6** (см. `CHANGELOG.md`).
 
 Полноценный файловый менеджер: обзор памяти и SD-карты, копирование / перенос / удаление, переименование,
 zip-архивы, поиск, просмотр картинок, текстовый редактор, сетка и список, сортировка.
@@ -40,7 +40,7 @@ npm install
 npm run apk
 ```
 
-Готовый APK: `release/filedeck-2.0.4-debug.apk`.
+Готовый APK: `release/filedeck-2.0.6-debug.apk`.
 Установка на телефон по USB (включите «Отладку по USB») — **поверх установленной версии**:
 
 ```bash
@@ -93,25 +93,30 @@ filedeck/
 ├─ vite.config.js
 ├─ src/
 │  ├─ main.js                 старт, подключение шрифтов и стилей
-│  ├─ app.js                  состояние, навигация, выделение, действия
-│  ├─ plugin.js               обёртка над нативным плагином FileManager
-│  ├─ mock-fs.js              имитация ФС для разработки в браузере
-│  ├─ layers.js               листы, диалоги, тосты, стек «Назад»
-│  ├─ viewer.js               просмотр изображений и текстовый редактор
-│  ├─ settings.js             экран настроек (шестерёнка)
-│  ├─ cleaner.js · trash.js   глубокая очистка и корзина
-│  ├─ archive.js              создание, просмотр и распаковка архивов
+│  ├─ app.js                  точка входа: запуск приложения
+│  ├─ app/                    приложение: состояние, навигация, экраны (views/), действия (actions/), события (events/)
+│  ├─ settings/               экраны настроек: главное меню и по файлу на раздел (sections/)
+│  ├─ cleaner/                глубокая очистка: сканирование, правила выбора, удаление, экраны (views/)
+│  ├─ trash/                  корзина: экран, действия, окно прогресса
+│  ├─ archive/                создание, просмотр и распаковка архивов
+│  ├─ layers/                 стек «Назад», листы, диалоги, тосты
+│  ├─ viewer/                 просмотр изображений и текстовый редактор
+│  ├─ icons/                  набор иконок и фирменная папка
+│  ├─ mock/                   имитация нативных плагинов для разработки в браузере
+│  ├─ plugin.js               реестр нативных плагинов (FM, CL, TR, AR)
+│  ├─ platform.js · file-url.js · listen.js
+│  ├─ format.js · path.js · html.js · sort.js · debounce.js · file-kinds.js · archive-types.js
 │  ├─ assets/d-mark.png       логотип DataLaw (маска для CSS)
-│  ├─ icons.js · utils.js
-│  └─ styles.css              оформление (темы, адаптивность)
+│  └─ styles.css + styles/    оформление: порядок подключения частей задаёт каскад
 ├─ android/                   нативный проект (Gradle)
 │  └─ app/src/main/
 │     ├─ java/dev/filedeck/app/
-│     │  ├─ MainActivity.java         регистрирует плагин
-│     │  ├─ FileManagerPlugin.java    файлы, сведения о приложении
-│     │  ├─ CleanerPlugin.java        сканер очистки и корзина
-│     │  ├─ ArchivePlugin.java        архиватор
-│     │  └─ FsUtil.java               общие файловые утилиты
+│     │  ├─ MainActivity.java         регистрирует плагины
+│     │  ├─ FileManagerPlugin.java    мост «файлы»: FileBrowser, FileOps, TextFiles, FileOpener, FileJson, MimeTypes
+│     │  ├─ CleanerPlugin.java        мост «очистка»: Scanner, DuplicateFinder, SimilarImageFinder, FileKinds
+│     │  ├─ TrashPlugin.java          корзина: TrashStore (хранилище)
+│     │  ├─ ArchivePlugin.java        мост «архивы»: ArchiveCreator / Lister / Extractor, форматы, Sink/Source
+│     │  └─ FsUtil · JobRunner · JsArrays · Cancelled   общие утилиты
 │     ├─ AndroidManifest.xml          разрешения
 │     ├─ (android/signing/)           ключ для сборок «для себя»
 │     └─ res/xml/file_paths.xml       FileProvider (открыть / поделиться)
@@ -130,13 +135,13 @@ filedeck/
 менеджера написан свой плагин `FileManager` (Java). Он оперирует обычными путями
 (`/storage/emulated/0/...`) и умеет: `getRoots`, `list`, `search`, `size`, `mkdir`, `createFile`,
 `rename`, `remove`, `copy`, `move`, `readText`, `writeText`, `open`, `share`,
-`checkPermission`, `requestPermission`, `appInfo`. Плагины `Cleaner` (scan, trash*) и `Archive`
-(create, list, extract) вынесены отдельно. Тяжёлые операции идут в отдельном пуле потоков и не блокируют
+`checkPermission`, `requestPermission`. Плагины `Cleaner` (scan, cancelScan), `Trash` (move, list, restore,
+remove, empty, purge, cancel) и `Archive` (create, list, extract) вынесены отдельно. Тяжёлые операции идут в отдельном пуле потоков и не блокируют
 интерфейс. Распаковка защищена от Zip Slip, копирование папки внутрь самой себя запрещено,
 при совпадении имён добавляется « (1)» — существующие файлы не перезаписываются.
 
-Чтобы добавить функцию: метод в `FileManagerPlugin.java` → вызов `FM.метод()` в `src/app.js` →
-заглушка в `src/mock-fs.js`, чтобы работало и в браузере.
+Чтобы добавить функцию: метод в `FileManagerPlugin.java` (логика — в соседнем классе) → вызов `FM.метод()` в
+нужном модуле `src/app/` → заглушка в `src/mock/file-manager.js`, чтобы работало и в браузере.
 
 ## Доступ к файлам
 

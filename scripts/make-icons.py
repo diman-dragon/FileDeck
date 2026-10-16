@@ -1,37 +1,46 @@
 #!/usr/bin/env python3
-"""Генерирует иконки FileDeck в стиле DataLaw: тёмно-синий фон, кремовая D, жёлтый значок с папкой.
+"""Генерирует иконки FileDeck в стиле DataLaw: тёмно-синий фон, жёлтая папка со стилизованной буквой D внутри.
 Запуск: python3 scripts/make-icons.py   (нужен Pillow и numpy)"""
 from PIL import Image, ImageDraw, ImageChops
 import numpy as np, glob, os, math
 
-NAVY=(17,27,48,255); CREAM=(244,232,206,255); YEL=(255,204,0,255)
+NAVY=(17,27,48,255); MANILA=(240,184,74,255); MANILA_DEEP=(201,143,28,255)
 D=Image.open('src/assets/d-mark.png').split()[3]
 SS=4
 RES='android/app/src/main/res/'
 
-def folder_glyph(d, cx, cy, size, color):
-    w=size; h=size*0.78
-    x0=cx-w/2; y0=cy-h/2+size*0.04; r=size*0.10
-    d.rounded_rectangle([x0, y0+h*0.18, x0+w, y0+h], radius=r, fill=color)
-    d.rounded_rectangle([x0, y0, x0+w*0.46, y0+h*0.34], radius=r, fill=color)
+def rrect(d, x0, y0, x1, y1, r, fill):
+    d.rounded_rectangle([x0, y0, x1, y1], radius=r, fill=fill)
 
 def composition(px=512, with_bg=True, mono=False):
+    """Папка (форма как в приложении) с буквой D на лицевой панели. mono — силуэт для тематической иконки."""
     s=px*SS/512
     im=Image.new('RGBA',(px*SS,px*SS),NAVY if with_bg else (0,0,0,0))
-    layer=Image.new('RGBA',im.size,(0,0,0,0))
-    dw,dh=int(287*s),int(318*s)
-    dm=D.resize((dw,dh),Image.LANCZOS)
-    layer.paste(Image.new('RGBA',(dw,dh),(255,255,255,255) if mono else CREAM),(int(63*s),int(60*s)),dm)
-    d=ImageDraw.Draw(layer)
-    cx,cy,r=399.5*s,399.5*s,110*s
+    # геометрия папки в координатах глифа 40×40 приложения: x 4..36, y 7..33
+    k=13.4*s                       # масштаб глифа
+    ox=256*s-20*k; oy=256*s-20*k   # центр глифа (20,20) — в центр холста
+    X=lambda x: ox+x*k
+    Y=lambda y: oy+y*k
+    r=3*k
+    back=Image.new('RGBA',im.size,(0,0,0,0)); bd=ImageDraw.Draw(back)
+    white=(255,255,255,255)
+    rrect(bd,X(4),Y(10),X(36),Y(33),r,white if mono else MANILA_DEEP)       # задняя стенка
+    rrect(bd,X(4),Y(7),X(18.6),Y(15),r,white if mono else MANILA_DEEP)      # язычок
+    rrect(bd,X(4),Y(17),X(36),Y(33),r,white if mono else MANILA)            # лицевая панель
+    if not mono:
+        bd.line([X(4)+r*0.4,Y(17.5),X(36)-r*0.4,Y(17.5)],fill=(255,255,255,70),width=max(1,int(k*0.16)))
+    # буква D по центру лицевой панели
+    box=D.crop(D.getbbox())
+    dh=int((33-17)*k*0.88); dw=int(dh*box.width/box.height)
+    dm=box.resize((dw,dh),Image.LANCZOS)
+    cx=(X(4)+X(36))/2; cy=(Y(17)+Y(33))/2
+    pos=(int(cx-dw/2),int(cy-dh/2))
     if mono:
-        d.ellipse([cx-r,cy-r,cx+r,cy+r],fill=(255,255,255,255))
-        cut=Image.new('L',im.size,0); folder_glyph(ImageDraw.Draw(cut),cx,cy,r*1.15,255)
-        layer.putalpha(ImageChops.subtract(layer.split()[3],cut))
+        cut=Image.new('L',im.size,0); cut.paste(dm,pos)
+        back.putalpha(ImageChops.subtract(back.split()[3],cut))
     else:
-        d.ellipse([cx-r,cy-r,cx+r,cy+r],fill=YEL)
-        folder_glyph(d,cx,cy,r*1.15,NAVY)
-    return Image.alpha_composite(im,layer).resize((px,px),Image.LANCZOS)
+        back.paste(Image.new('RGBA',(dw,dh),NAVY),pos,dm)
+    return Image.alpha_composite(im,back).resize((px,px),Image.LANCZOS)
 
 def enclosing_circle(alpha):
     """Приближённая минимальная окружность вокруг непрозрачных пикселей."""

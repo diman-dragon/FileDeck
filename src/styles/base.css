@@ -1,0 +1,9 @@
+body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input, textarea { font: inherit; color: inherit; -webkit-user-select: text; user-select: text; }
+:focus-visible { outline: 2px solid var(--manila); outline-offset: 2px; }
+.ic { flex: none; display: block; }
+.muted { color: var(--muted); }
+.pad { padding: 24px; }
+
+#app { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--chrome); padding-left: var(--sal); padding-right: var(--sar); }

@@ -1,25 +1,18 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
-import { createMock, createMockCleaner, createMockArchive, mockThumb } from './mock-fs.js';
+// Реестр нативных плагинов. На телефоне это Java-классы, в браузере — моки из src/mock/.
+import { registerPlugin } from '@capacitor/core';
+import { createMock } from './mock/file-manager.js';
+import { createMockCleaner } from './mock/cleaner.js';
+import { createMockTrash } from './mock/trash.js';
+import { createMockArchive } from './mock/archive.js';
 
-export const isNative = Capacitor.isNativePlatform();
-
-/** Файлы: список, копирование, поиск, чтение/запись текста (Java: FileManagerPlugin). В браузере — мок. */
+/** Файлы: список, копирование, поиск, чтение/запись текста (Java: FileManagerPlugin). */
 export const FM = registerPlugin('FileManager', { web: async () => createMock() });
 
-/** Глубокая очистка и корзина (Java: CleanerPlugin). */
+/** Глубокая очистка: поиск дубликатов, мусора и крупных файлов (Java: CleanerPlugin). */
 export const CL = registerPlugin('Cleaner', { web: async () => createMockCleaner() });
+
+/** Корзина: перенос, список, восстановление, удаление с прогрессом (Java: TrashPlugin). */
+export const TR = registerPlugin('Trash', { web: async () => createMockTrash() });
 
 /** Архиватор: ZIP / 7z / TAR / RAR… (Java: ArchivePlugin). */
 export const AR = registerPlugin('Archive', { web: async () => createMockArchive() });
-
-/** URL для <img>/<video>: на устройстве файл отдаёт локальный сервер Capacitor. */
-export function fileUrl(path) {
-  if (!isNative) return mockThumb(path);
-  return Capacitor.convertFileSrc('file://' + path.split('/').map(encodeURIComponent).join('/'));
-}
-
-/** Подписка на событие плагина; возвращает функцию отписки. */
-export async function listen(plugin, event, cb) {
-  const handle = await plugin.addListener(event, cb);
-  return () => handle.remove();
-}

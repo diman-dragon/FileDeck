@@ -1,5 +1,6 @@
 // Главный экран настроек: список разделов. Каждый раздел открывается отдельным подэкраном.
-import { toast, confirmDialog } from '../layers.js';
+import { toast } from '../layers/toast.js';
+import { confirmDialog } from '../layers/confirm-dialog.js';
 import { openSubscreen } from './subscreen.js';
 import { menuRow, group } from './rows.js';
 import { openAppearance } from './sections/appearance.js';
@@ -46,7 +47,7 @@ export function openSettings(ctx) {
       ) +
       group(menuRow('access', 'lock', 'Доступ к файлам', accessSummary(ctx)) + menuRow('about', 'info', 'О приложении', aboutSummary(ctx))) +
       group(
-        `<button class="row danger" data-act="reset"><span class="row-text"><span class="row-label">Сбросить настройки</span><small>Вернуть тему, сортировку и вид по умолчанию</small></span></button>`
+        `<button class="row danger" data-act="reset"><span class="row-text"><span class="row-label">Сбросить настройки</span><small>Вернуть все настройки по умолчанию</small></span></button>`
       ),
   });
   return main.close;

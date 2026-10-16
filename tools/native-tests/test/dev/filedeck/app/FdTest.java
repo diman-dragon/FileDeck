@@ -209,13 +209,15 @@ public class FdTest {
         check(!anyGroupWith(r3.getJSONArray("duplicates"), "big_copy.bin"), "исключённая папка пропущена");
 
         // ---------------------------------------------------------------- КОРЗИНА
-        System.out.println("== Cleaner.trash");
+        System.out.println("== Trash");
+        TrashPlugin tr = new TrashPlugin();
+        tr.testContext = ctx;
         JSObject tm = new JSObject();
         tm.put("paths", arr(root.resolve("Download/big.bin").toString(), root.resolve("mixed").toString(), root.resolve("нет такого").toString()));
-        JSObject trm = call(cl, "trashMove", tm).future.get();
+        JSObject trm = call(tr, "move", tm).future.get();
         check(trm.getInt("done") == 2 && trm.getJSONArray("failed").length() == 1, "в корзину перенесено 2, ошибка у несуществующего");
         check(!Files.exists(root.resolve("Download/big.bin")) && !Files.exists(root.resolve("mixed")), "оригиналы исчезли с места");
-        JSObject tl = call(cl, "trashList", new JSObject()).future.get();
+        JSObject tl = call(tr, "list", new JSObject()).future.get();
         check(tl.getInt("count") == 2, "в корзине 2 элемента");
         String idFile = null, idDir = null;
         for (int i = 0; i < tl.getJSONArray("items").length(); i++) {
@@ -226,26 +228,27 @@ public class FdTest {
         // конфликт имён при восстановлении
         write(root.resolve("Download/big.bin"), "new".getBytes());
         JSObject rs = new JSObject(); rs.put("ids", arr(idFile, idDir));
-        JSObject rr = call(cl, "trashRestore", rs).future.get();
+        JSObject rr = call(tr, "restore", rs).future.get();
         check(rr.getInt("done") == 2, "восстановлено 2");
         check(Files.exists(root.resolve("Download/big (1).bin")) && Files.size(root.resolve("Download/big (1).bin")) == 200_000L, "при конфликте имя получило суффикс (1), новый файл не затёрт");
         check(Files.readString(root.resolve("Download/big.bin")).equals("new"), "файл с тем же именем не перезаписан");
         check(Files.exists(root.resolve("mixed/keep.txt")), "папка восстановлена вместе с содержимым");
-        check(call(cl, "trashList", new JSObject()).future.get().getInt("count") == 0, "корзина пуста после восстановления");
+        check(call(tr, "list", new JSObject()).future.get().getInt("count") == 0, "корзина пуста после восстановления");
         // защита от удаления корня и корзины в корзину
         JSObject bad = new JSObject(); bad.put("paths", arr(root.toString()));
-        check(call(cl, "trashMove", bad).future.get().getInt("done") == 0, "корень накопителя нельзя отправить в корзину");
+        check(call(tr, "move", bad).future.get().getInt("done") == 0, "корень накопителя нельзя отправить в корзину");
         // purge / empty
         JSObject t2 = new JSObject(); t2.put("paths", arr(root.resolve("Download/big (1).bin").toString(), root.resolve("zero.txt").toString()));
-        call(cl, "trashMove", t2);
+        call(tr, "move", t2);
         JSObject pg = new JSObject(); pg.put("days", 30);
-        check(call(cl, "trashPurge", pg).future.get().getInt("done") == 0, "purge(30 дн.) свежие не трогает");
+        check(call(tr, "purge", pg).future.get().getInt("done") == 0, "purge(30 дн.) свежие не трогает");
         JSObject pg0 = new JSObject(); pg0.put("days", 0);
         Thread.sleep(20);
-        check(call(cl, "trashPurge", pg0).future.get().getInt("done") == 2, "purge(0 дн.) удаляет всё просроченное");
-        call(cl, "trashMove", t2 = single(root.resolve("Download/x.bin")));
-        JSObject em = call(cl, "trashEmpty", new JSObject()).future.get();
-        check(em.getInt("done") == 1 && call(cl, "trashList", new JSObject()).future.get().getInt("count") == 0, "trashEmpty очищает корзину");
+        check(call(tr, "purge", pg0).future.get().getInt("done") == 2, "purge(0 дн.) удаляет всё просроченное");
+        call(tr, "move", t2 = single(root.resolve("Download/x.bin")));
+        JSObject em = call(tr, "empty", new JSObject()).future.get();
+        check(em.getInt("done") == 1 && call(tr, "list", new JSObject()).future.get().getInt("count") == 0, "trashEmpty очищает корзину");
+        check(tr.testEvents.stream().anyMatch(e -> e.startsWith("progress")), "очистка корзины присылает прогресс");
         check(!Files.exists(root.resolve(".FileDeckTrash/.nomedia")) == false, ".nomedia в корзине на месте");
 
         // ---------------------------------------------------------------- АРХИВЫ
@@ -364,6 +367,7 @@ public class FdTest {
 
         deleteTree(root);
         System.out.println();
+        FileOpsTest.run();
         System.out.println("ИТОГО: пройдено " + passed + ", провалено " + failed);
         System.exit(failed == 0 ? 0 : 1);
     }

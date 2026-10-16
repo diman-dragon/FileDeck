@@ -1,0 +1,7 @@
+@media (min-width: 560px) {
+  .items.grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .quick-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

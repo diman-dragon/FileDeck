@@ -1,5 +1,5 @@
 import { openSubscreen } from '../subscreen.js';
-import { escapeHtml } from '../../utils.js';
+import { escapeHtml } from '../../html.js';
 import { group } from '../rows.js';
 
 /** О приложении: логотип, версия, сборка. */

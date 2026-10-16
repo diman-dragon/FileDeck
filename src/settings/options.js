@@ -4,10 +4,6 @@ export const THEMES = [
   ['amoled', 'Тёмная', 'Чистый чёрный — экономит заряд на OLED-экранах'],
   ['light', 'Светлая', 'Тёплая светлая тема цвета какао с молоком'],
 ];
-export const VIEWS = [
-  ['list', 'Список', 'list'],
-  ['grid', 'Сетка', 'grid'],
-];
 export const SORTS = [
   ['name', 'По имени'],
   ['date', 'По дате'],

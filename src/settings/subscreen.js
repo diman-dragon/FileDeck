@@ -1,7 +1,8 @@
 // Универсальный экран настроек: шапка «назад + заголовок», прокручиваемое тело и разбор нажатий.
 // Системная кнопка «Назад» закрывает верхний экран сама — все экраны живут в общем стеке слоёв.
-import { icon } from '../icons.js';
-import { pushLayer, el } from '../layers.js';
+import { icon } from '../icons/icon.js';
+import { pushLayer } from '../layers/stack.js';
+import { el } from '../layers/dom.js';
 
 /**
  * title    — заголовок в шапке

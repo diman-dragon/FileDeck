@@ -1,0 +1,8 @@
+/* ---------- редактор ---------- */
+.layer-editor { background: var(--surface); display: flex; flex-direction: column; transform: translateY(24px); opacity: 0; transition: transform 0.22s ease, opacity 0.2s; }
+.layer-editor.open { transform: none; opacity: 1; }
+.ed-bar { flex: none; display: flex; align-items: center; gap: 6px; padding: calc(var(--sat) + 6px) 12px 8px 6px; background: var(--chrome); }
+.ed-title { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; }
+.ed-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--manila); flex: none; }
+.ed-area { flex: 1; width: 100%; resize: none; border: 0; outline: none; background: var(--surface); padding: 16px 16px calc(var(--sab) + 16px); font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; tab-size: 2; white-space: pre; overflow: auto; }

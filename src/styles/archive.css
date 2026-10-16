@@ -1,0 +1,22 @@
+/* архиватор */
+.arc-dialog { max-height: 92%; overflow-y: auto; }
+.fld-label { margin: 14px 2px 6px; font-size: 13px; font-weight: 650; color: var(--muted); }
+.fld-label.muted { opacity: 0.55; }
+.fld-hint { margin: 6px 2px 0; font-size: 12.5px; color: var(--muted); min-height: 1.2em; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { height: 36px; padding: 0 14px; border-radius: 12px; font-size: 13.5px; font-weight: 600; background: var(--surface-3); color: var(--muted); border: 1px solid transparent; }
+.chip.on { background: var(--manila); color: var(--on-manila); }
+.pw-row { display: flex; align-items: center; gap: 4px; }
+.pw-row .dialog-input { margin: 0; flex: 1; min-width: 0; }
+.pw-row .dialog-input:disabled { opacity: 0.5; }
+.dialog-error { margin: 6px 2px 0; color: var(--danger); font-size: 13px; }
+.dialog-input.invalid { border-color: var(--danger); }
+.av-title { flex: 1; min-width: 0; }
+.av-name { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.av-sub { margin-top: 2px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.av-body { padding: 0 0 16px; }
+.av-crumbs { display: flex; gap: 3px; overflow-x: auto; padding: 10px 12px 0; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.av-crumbs::-webkit-scrollbar { display: none; }
+.av-crumbs .tab { height: 32px; font-size: 13px; }
+.av-body .item { display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 18px; min-height: 62px; cursor: pointer; }
+.av-body .chk { margin-left: auto; }
