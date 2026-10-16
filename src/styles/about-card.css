@@ -1,0 +1,17 @@
+/* ---------- настройки: карточка «О нас» ---------- */
+.about-card { position: relative; overflow: hidden; margin-top: 10px; padding: 20px 18px 18px; border-radius: 26px; border: 1px solid color-mix(in oklab, var(--manila) 38%, var(--line)); background: linear-gradient(150deg, color-mix(in oklab, var(--manila) 26%, var(--surface-2)) 0%, var(--surface-2) 62%); box-shadow: 0 10px 28px color-mix(in oklab, var(--manila) 14%, transparent); }
+.about-bg { position: absolute; right: -34px; bottom: -40px; opacity: 0.16; transform: rotate(-12deg); pointer-events: none; }
+.about-bg svg { width: 190px; height: 190px; }
+.about-head { position: relative; display: flex; align-items: center; gap: 14px; }
+.about-logo { flex: none; width: 68px; height: 68px; border-radius: 22px; display: grid; place-items: center; background: var(--manila); box-shadow: 0 6px 16px color-mix(in oklab, var(--manila) 45%, transparent), inset 0 -3px 0 color-mix(in oklab, var(--manila-deep) 55%, transparent); }
+.about-d { display: block; width: 40px; height: 40px; background: var(--on-manila); -webkit-mask: url('../assets/d-mark.png') center / contain no-repeat; mask: url('../assets/d-mark.png') center / contain no-repeat; }
+.about-name { font-family: var(--font-display); font-weight: 650; font-size: 25px; letter-spacing: -0.02em; }
+.about-tag { margin-top: 2px; font-size: 13px; color: var(--muted); }
+.about-chips { position: relative; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.chip { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; background: var(--manila); color: var(--on-manila); }
+.chip.soft { background: color-mix(in oklab, var(--text) 8%, transparent); color: var(--text); }
+.about-facts { position: relative; margin-top: 16px; border-radius: 16px; border: 1px solid var(--line); background: color-mix(in oklab, var(--surface) 72%, transparent); }
+.about-fact { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; font-size: 14px; }
+.about-fact + .about-fact { border-top: 1px solid var(--line); }
+.about-fact span { color: var(--muted); }
+.about-fact b { font-weight: 650; }

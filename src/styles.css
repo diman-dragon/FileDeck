@@ -18,4 +18,5 @@
 @import './styles/cleaner-summary.css';
 @import './styles/result-rows.css';
 @import './styles/archive.css';
-@import './styles/settings-menu.css';
+@import './styles/settings-pager.css';
+@import './styles/about-card.css';

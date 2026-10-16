@@ -1,3 +1,0 @@
-/* настройки: пункты меню */
-.row-ic { flex: none; width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in oklab, var(--manila) 22%, transparent); color: var(--manila-deep); }
-.row > .ic:last-child { color: var(--muted); }

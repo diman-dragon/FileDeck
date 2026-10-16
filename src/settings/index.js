@@ -1,54 +1,56 @@
-// Главный экран настроек: список разделов. Каждый раздел открывается отдельным подэкраном.
-import { toast } from '../layers/toast.js';
-import { confirmDialog } from '../layers/confirm-dialog.js';
-import { openSubscreen } from './subscreen.js';
-import { menuRow, group } from './rows.js';
-import { openAppearance } from './sections/appearance.js';
-import { openFiles } from './sections/files.js';
-import { openTrashSettings } from './sections/trash.js';
-import { openStartup } from './sections/startup.js';
-import { openAccess } from './sections/access.js';
-import { openAbout } from './sections/about.js';
-import {
-  appearanceSummary, filesSummary, trashSummary, startupSummary, accessSummary, aboutSummary,
-} from './summaries.js';
+// Экран настроек: вкладки «Общие / Файлы / О нас», страницы переключаются свайпом.
+import { icon } from '../icons/icon.js';
+import { pushLayer } from '../layers/stack.js';
+import { el } from '../layers/dom.js';
+import { PAGES } from './pages.js';
+import { tabsHtml, bindPager } from './tabs.js';
+import { createActions } from './actions.js';
 
 /**
  * ctx: { prefs, save(), onChange(), version, build, native, hasAccess(), requestAccess(),
  *        trashInfo(), openTrash(), openCleaner(), reset() }
  */
 export function openSettings(ctx) {
-  const refresh = () => main.redraw();
-  const main = openSubscreen({
-    title: 'Настройки',
-    ctx,
-    actions: {
-      appearance: async () => openAppearance(ctx, refresh),
-      files: async () => openFiles(ctx, refresh),
-      trash: async () => openTrashSettings(ctx, refresh),
-      startup: async () => openStartup(ctx, refresh),
-      access: async () => openAccess(ctx, refresh),
-      about: async () => openAbout(ctx),
-      reset: async () => {
-        const ok = await confirmDialog({ title: 'Сбросить настройки?', text: 'Файлы не затрагиваются.', okText: 'Сбросить' });
-        if (!ok) return;
-        ctx.reset();
-        ctx.save();
-        ctx.onChange();
-        toast('Настройки сброшены');
-      },
-    },
-    body: () =>
-      group(
-        menuRow('appearance', 'theme', 'Внешний вид', appearanceSummary(ctx)) +
-          menuRow('files', 'folder', 'Файлы', filesSummary(ctx)) +
-          menuRow('trash', 'trash', 'Корзина и очистка', trashSummary(ctx)) +
-          menuRow('startup', 'home', 'При запуске открывать', startupSummary(ctx))
-      ) +
-      group(menuRow('access', 'lock', 'Доступ к файлам', accessSummary(ctx)) + menuRow('about', 'info', 'О приложении', aboutSummary(ctx))) +
-      group(
-        `<button class="row danger" data-act="reset"><span class="row-text"><span class="row-label">Сбросить настройки</span><small>Вернуть все настройки по умолчанию</small></span></button>`
-      ),
+  const { prefs } = ctx;
+  const node = el('', 'layer-root layer-settings');
+  const close = pushLayer(node);
+  const actions = createActions(ctx);
+
+  node.innerHTML = `
+    <div class="st-bar">
+      <button class="icon-btn" data-act="back" aria-label="Назад">${icon('back')}</button>
+      <h1>Настройки</h1>
+    </div>
+    ${tabsHtml(PAGES)}
+    <div class="st-pager">
+      ${PAGES.map((p) => `<section class="st-page" data-page="${p.id}" role="tabpanel"><div class="st-inner"></div></section>`).join('')}
+    </div>`;
+
+  // перерисовка меняет только содержимое страниц: положение пейджера и прокрутка сохраняются
+  const inners = [...node.querySelectorAll('.st-inner')];
+  const draw = () => PAGES.forEach((p, i) => (inners[i].innerHTML = p.html(ctx)));
+  draw();
+  bindPager(node);
+
+  node.addEventListener('click', async (ev) => {
+    const t = ev.target.closest('[data-toggle],[data-set],[data-act]');
+    if (!t) return;
+    const d = t.dataset;
+    if (d.act === 'back') return close();
+    if (d.toggle) {
+      prefs[d.toggle] = !prefs[d.toggle];
+    } else if (d.set) {
+      prefs[d.set] = d.num === 'true' ? Number(d.val) : d.val;
+    } else {
+      const run = actions[d.act];
+      if (!run) return;
+      await run();
+      return draw();
+    }
+    ctx.save();
+    ctx.onChange();
+    draw();
   });
-  return main.close;
+
+  return close;
 }

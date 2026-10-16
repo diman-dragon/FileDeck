@@ -15,18 +15,10 @@ export const choiceRow = (key, value, label, hint, active) => `
     <span class="radio ${active ? 'on' : ''}">${active ? icon('check', 16) : ''}</span>
   </button>`;
 
-/** Строка-кнопка со стрелкой: открывает подэкран или действие. */
+/** Строка-кнопка со стрелкой: открывает экран или запускает действие. */
 export const linkRow = (act, label, hint) => `
   <button class="row" data-act="${act}">
     <span class="row-text"><span class="row-label">${label}</span>${hint ? `<small>${hint}</small>` : ''}</span>
-    ${icon('chevron', 20)}
-  </button>`;
-
-/** Пункт главного меню: иконка, название, краткое текущее значение. */
-export const menuRow = (act, ic, label, summary) => `
-  <button class="row" data-act="${act}">
-    <span class="row-ic">${icon(ic, 20)}</span>
-    <span class="row-text"><span class="row-label">${label}</span>${summary ? `<small>${summary}</small>` : ''}</span>
     ${icon('chevron', 20)}
   </button>`;
 
@@ -38,3 +30,6 @@ export const infoRow = (label, hint, badgeHtml = '') => `
   </div>`;
 
 export const group = (html, cls = '') => `<div class="group ${cls}">${html}</div>`;
+
+/** Подзаголовок над группой строк. */
+export const caption = (text) => `<h2 class="st-h">${text}</h2>`;

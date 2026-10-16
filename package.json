@@ -1,6 +1,6 @@
 {
   "name": "filedeck",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "private": true,
   "description": "FileDeck by DataLaw — файловый менеджер для Android (Capacitor 8)",
   "type": "module",
