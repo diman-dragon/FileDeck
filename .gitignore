@@ -1,13 +1,13 @@
-node_modules/
-dist/
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
 *.log
 .DS_Store
-Thumbs.db
-.idea/
 *.jks
-!android/signing/filedeck-sideload.jks
+!signing/filedeck-sideload.jks
 *.keystore
-android/keystore.properties
-
-# Готовые сборки
+keystore.properties
 release/
+.kotlin/

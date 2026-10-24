@@ -1,9 +1,0 @@
-/* ---------- кнопки ---------- */
-.btn { height: 46px; padding: 0 20px; border-radius: 15px; font-weight: 650; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.btn.small { height: 38px; padding: 0 14px; border-radius: 12px; font-size: 14px; }
-.btn.big { height: 54px; padding: 0 28px; border-radius: 18px; font-size: 16px; }
-.btn.primary { background: var(--manila); color: var(--on-manila); }
-.btn.primary:disabled { opacity: 0.4; }
-.btn.ghost { color: var(--text); background: color-mix(in oklab, var(--text) 9%, transparent); }
-.btn.danger { background: var(--danger); color: #2b0a06; }
-.btn:active { filter: brightness(0.92); }

@@ -7,31 +7,46 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
-      - name: Установка зависимостей
-        run: npm ci
+      - uses: android-actions/setup-android@v3
 
-      - name: Сборка (веб + sync + APK и AAB)
-        run: npm run release
-        env:
-          CI: true
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Тесты
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Сборка APK и AAB
+        run: ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
+
+      - name: Собрать файлы
+        run: |
+          VERSION=$(grep '^app.version=' gradle.properties | cut -d= -f2)
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk "release/filedeck-${VERSION}-debug.apk"
+          cp app/build/outputs/apk/release/app-release.apk "release/filedeck-${VERSION}.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "release/filedeck-${VERSION}.aab"
+          ls -la release
 
       - uses: actions/upload-artifact@v4
         with:
           name: filedeck-${{ github.sha }}
           path: release/*
+
+      - name: Релиз на GitHub (по тегу v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*

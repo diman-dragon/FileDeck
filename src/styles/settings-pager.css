@@ -1,9 +1,0 @@
-/* ---------- настройки: вкладки и свайп-страницы ---------- */
-.st-tabs { position: relative; flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 2px 14px 12px; padding: 4px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); }
-.st-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n)); border-radius: 12px; background: var(--manila); box-shadow: 0 2px 8px color-mix(in oklab, var(--manila) 40%, transparent); will-change: transform; pointer-events: none; }
-.st-tab { position: relative; z-index: 1; height: 38px; border-radius: 12px; font-size: 14.5px; font-weight: 650; color: var(--muted); transition: color 0.15s; }
-.st-tab.on { color: var(--on-manila); }
-.st-pager { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; background: var(--surface); border-radius: 22px 22px 0 0; }
-.st-pager::-webkit-scrollbar { display: none; }
-.st-page { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; overflow-y: auto; overscroll-behavior-y: contain; }
-.st-inner { padding: 4px 14px calc(var(--sab) + 32px); }

@@ -1,9 +1,0 @@
-/* главный экран: плитки */
-.tools { display: grid; grid-template-columns: 1.3fr 1fr; gap: 10px; margin-top: 12px; }
-.tool { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border-radius: 20px; text-align: left; background: var(--surface-2); border: 1px solid var(--line); color: var(--manila-deep); transition: transform 0.12s; }
-.tool b { color: var(--text); font-size: 16px; margin-top: 8px; }
-.tool small { color: var(--muted); font-size: 12.5px; line-height: 1.3; }
-.tool:active { transform: scale(0.97); }
-.tool.main { background: var(--manila); border-color: var(--manila); color: var(--on-manila); }
-.tool.main b, .tool.main small { color: var(--on-manila); }
-.tool.main small { opacity: 0.8; }
