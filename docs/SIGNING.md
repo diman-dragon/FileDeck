@@ -8,7 +8,7 @@ Android считает APK обновлением, только если сов�
 | подпись (сертификат) | один ключ в `signing/` — на всех ваших машинах и в GitHub Actions |
 | `versionCode` | считается из `app.version` в `gradle.properties`: major·10000 + minor·100 + patch |
 
-Ключ и `applicationId` те же, что у прежней Capacitor-версии (2.x), но нумерация начата заново: 0.0.1 → versionCode 1.
+Ключ и `applicationId` те же, что у прежней Capacitor-версии (2.x), но нумерация начата заново: 0.0.1 → versionCode 1, 0.0.2 → 2 и т. д.
 **Поверх установленной 2.x эту сборку поставить нельзя** — Android запрещает понижение versionCode. Удалите старую версию один раз
 (`adb uninstall dev.filedeck.app`); все следующие сборки будут обновляться поверх.
 

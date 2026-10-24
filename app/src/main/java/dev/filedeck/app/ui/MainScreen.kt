@@ -181,7 +181,10 @@ private fun Crumbs(vm: AppViewModel, path: String, modifier: Modifier) {
 private fun SearchField(vm: AppViewModel) {
     val s = vm.search ?: return
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(120)
+        try { focus.requestFocus() } catch (e: Exception) { /* поле ещё не готово */ }
+    }
     TextField(
         value = s.q, onValueChange = { vm.runSearch(it) }, singleLine = true,
         placeholder = { Text(if (vm.path != null) "Поиск в этой папке" else "Поиск по памяти") },

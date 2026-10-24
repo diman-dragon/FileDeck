@@ -2,6 +2,14 @@
 
 Версия берётся из `app.version` в `gradle.properties`. versionCode Android = major·10000 + minor·100 + patch.
 
+## 0.0.2 — 2026-10-24
+**Исправления**
+- Приложение закрывалось сразу после заставки: в манифесте стартовый экран был указан как `.MainActivity`, а класс лежит в
+  пакете `ui` → теперь `.ui.MainActivity`.
+- Экран аварии: при падении показывает текст ошибки с кнопками «Копировать» и «Поделиться».
+- Защита от падения при запросе фокуса в поле поиска и в диалогах ввода.
+- GitHub Actions: убран падавший шаг `setup-android`, добавлены принятие лицензий SDK и `chmod +x gradlew`.
+
 ## 0.0.1 — 2026-10-24
 **Полный переход на нативный Android (Kotlin + Jetpack Compose)**
 - Интерфейс переписан с HTML/CSS/JS (Capacitor) на Jetpack Compose + Material 3. WebView, Node.js и Capacitor больше не нужны.

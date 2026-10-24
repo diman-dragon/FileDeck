@@ -432,7 +432,10 @@ fun PromptDialogUi(d: Dlg.Prompt) {
     var tf by remember(d) { mutableStateOf(initial) }
     var show by remember(d) { mutableStateOf(false) }
     val focus = remember { androidx.compose.ui.focus.FocusRequester() }
-    androidx.compose.runtime.LaunchedEffect(d) { focus.requestFocus() }
+    androidx.compose.runtime.LaunchedEffect(d) {
+        kotlinx.coroutines.delay(120)
+        try { focus.requestFocus() } catch (e: Exception) { /* поле ещё не готово — не страшно */ }
+    }
     DialogShell(
         d.title, onDismiss = { d.result.complete(null) },
         confirm = { TextButton(onClick = { d.result.complete(tf.text) }) { Text(d.okText, color = fd.manila, fontWeight = FontWeight.SemiBold) } },
