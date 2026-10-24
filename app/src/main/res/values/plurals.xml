@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="word_file">
+        <item quantity="one">файл</item><item quantity="few">файла</item>
+        <item quantity="many">файлов</item><item quantity="other">файлов</item>
+    </plurals>
+    <plurals name="word_item">
+        <item quantity="one">объект</item><item quantity="few">объекта</item>
+        <item quantity="many">объектов</item><item quantity="other">объектов</item>
+    </plurals>
+    <plurals name="word_folder">
+        <item quantity="one">папка</item><item quantity="few">папки</item>
+        <item quantity="many">папок</item><item quantity="other">папок</item>
+    </plurals>
+    <plurals name="word_day">
+        <item quantity="one">день</item><item quantity="few">дня</item>
+        <item quantity="many">дней</item><item quantity="other">дней</item>
+    </plurals>
+    <plurals name="word_group">
+        <item quantity="one">группа</item><item quantity="few">группы</item>
+        <item quantity="many">групп</item><item quantity="other">групп</item>
+    </plurals>
+    <plurals name="word_result">
+        <item quantity="one">результат</item><item quantity="few">результата</item>
+        <item quantity="many">результатов</item><item quantity="other">результатов</item>
+    </plurals>
+    <plurals name="word_selected">
+        <item quantity="one">выбран</item><item quantity="few">выбрано</item>
+        <item quantity="many">выбрано</item><item quantity="other">выбрано</item>
+    </plurals>
+    <plurals name="word_group_in">
+        <item quantity="one">группе</item><item quantity="few">группах</item>
+        <item quantity="many">группах</item><item quantity="other">группах</item>
+    </plurals>
+</resources>

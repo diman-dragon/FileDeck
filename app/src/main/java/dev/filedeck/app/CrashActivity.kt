@@ -20,7 +20,7 @@ class CrashActivity : Activity() {
         super.onCreate(savedInstanceState)
         val trace = intent.getStringExtra("trace")
             ?: File(filesDir, "crash.txt").takeIf { it.exists() }?.readText()
-            ?: "Нет данных об ошибке"
+            ?: Str.s(R.string.crash_no_data)
         val d = resources.displayMetrics.density
         val pad = (16 * d).toInt()
 
@@ -29,12 +29,12 @@ class CrashActivity : Activity() {
         root.setPadding(pad, pad * 2, pad, pad)
 
         val title = TextView(this)
-        title.text = "FileDeck закрылся из-за ошибки"
+        title.text = Str.s(R.string.crash_title)
         title.textSize = 20f
         root.addView(title)
 
         val hint = TextView(this)
-        hint.text = "Нажмите «Поделиться» или «Копировать» и отправьте текст разработчику."
+        hint.text = Str.s(R.string.crash_hint)
         hint.setPadding(0, pad / 2, 0, pad / 2)
         root.addView(hint)
 
@@ -43,26 +43,26 @@ class CrashActivity : Activity() {
         buttons.gravity = Gravity.START
 
         val copy = Button(this)
-        copy.text = "Копировать"
+        copy.text = Str.s(R.string.action_copy)
         copy.setOnClickListener {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(ClipData.newPlainText("crash", trace))
-            Toast.makeText(this, "Скопировано", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, Str.s(R.string.action_copied), Toast.LENGTH_SHORT).show()
         }
         buttons.addView(copy)
 
         val share = Button(this)
-        share.text = "Поделиться"
+        share.text = Str.s(R.string.action_share)
         share.setOnClickListener {
             val i = Intent(Intent.ACTION_SEND)
             i.type = "text/plain"
             i.putExtra(Intent.EXTRA_TEXT, trace)
-            startActivity(Intent.createChooser(i, "Отправить отчёт"))
+            startActivity(Intent.createChooser(i, Str.s(R.string.crash_share_chooser)))
         }
         buttons.addView(share)
 
         val close = Button(this)
-        close.text = "Закрыть"
+        close.text = Str.s(R.string.action_close)
         close.setOnClickListener { finishAndRemoveTask() }
         buttons.addView(close)
         root.addView(buttons)

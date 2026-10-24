@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_move_to_trash">Переместить в корзину</string>
+    <string name="trash_empty">Корзина пуста</string>
+    <string name="action_delete">Удалить</string>
+    <string name="archive_password">пароль</string>
+    <string name="cleaner_all_copies">В %1$s %2$s отмечены все экземпляры — файл исчезнет совсем. Продолжить?</string>
+    <string name="cleaner_done_deleted">Удалено: %1$s%2$s · освобождено %3$s</string>
+    <string name="cleaner_done_trash">В корзине: %1$s%2$s. Место освободится после очистки корзины.</string>
+    <string name="cleaner_scanned">Просмотрено %1$s %2$s · %3$s · %4$s с</string>
+    <string name="cleaner_trash_hint">Хранится %1$s %2$s, можно восстановить</string>
+    <string name="failed_suffix">, не удалось: %1$s</string>
+    <string name="freed">освобождено %1$s</string>
+    <string name="group_same">Одинаковые</string>
+    <string name="group_similar">Похожие</string>
+    <string name="props_contents">%1$s %2$s, %3$s %4$s</string>
+    <string name="quoted_name">«%1$s»</string>
+    <string name="search_truncated">показаны первые, уточните запрос</string>
+    <string name="settings_keep_days">Хранить %1$s %2$s</string>
+    <string name="size_exact">%1$s (%2$s Б)</string>
+    <string name="storage_short_internal">Память</string>
+    <string name="storage_short_sd">SD</string>
+    <string name="trash_deleted_on">удалён %1$s</string>
+    <string name="trash_empty_hint">Удалённые файлы хранятся здесь %1$s %2$s и могут быть восстановлены.</string>
+    <string name="trash_keep">хранение %1$s %2$s</string>
+    <string name="trash_left">осталось %1$s %2$s</string>
+</resources>

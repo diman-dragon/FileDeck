@@ -1,14 +1,13 @@
 package dev.filedeck.app
 
+import androidx.annotation.StringRes
 import java.util.Calendar
 import java.util.Locale
 
-// ---------------------------------------------------------------- размеры, даты, числительные
-
 fun formatSize(bytes: Long): String {
     if (bytes < 0) return ""
-    if (bytes < 1024) return "$bytes Б"
-    val units = arrayOf("КБ", "МБ", "ГБ", "ТБ")
+    if (bytes < 1024) return "$bytes ${Str.s(R.string.unit_b)}"
+    val units = arrayOf(R.string.unit_kb, R.string.unit_mb, R.string.unit_gb, R.string.unit_tb)
     var v = bytes / 1024.0
     var i = 0
     while (v >= 1024 && i < units.size - 1) {
@@ -20,17 +19,15 @@ fun formatSize(bytes: Long): String {
         v >= 10 -> String.format(Locale.ROOT, "%.1f", v)
         else -> String.format(Locale.ROOT, "%.2f", v)
     }
-    return s.replace('.', ',') + " " + units[i]
+    return s.replace('.', ',') + " " + Str.s(units[i])
 }
-
-private val MONTHS = arrayOf("янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек")
 
 fun formatDate(ms: Long, withTime: Boolean = false): String {
     if (ms <= 0) return ""
     val d = Calendar.getInstance().apply { timeInMillis = ms }
     val now = Calendar.getInstance()
     val sameYear = d.get(Calendar.YEAR) == now.get(Calendar.YEAR)
-    var s = "${d.get(Calendar.DAY_OF_MONTH)} ${MONTHS[d.get(Calendar.MONTH)]}" +
+    var s = "${d.get(Calendar.DAY_OF_MONTH)} ${Str.array(R.array.months_short).getOrElse(d.get(Calendar.MONTH)) { (d.get(Calendar.MONTH) + 1).toString() }}" +
         (if (sameYear) "" else " ${d.get(Calendar.YEAR)}")
     if (withTime) {
         s += String.format(Locale.ROOT, ", %02d:%02d", d.get(Calendar.HOUR_OF_DAY), d.get(Calendar.MINUTE))
@@ -38,23 +35,12 @@ fun formatDate(ms: Long, withTime: Boolean = false): String {
     return s
 }
 
-/** Выбирает форму слова по числу: plural(5, "файл", "файла", "файлов") → "файлов". */
-fun plural(n: Int, one: String, few: String, many: String): String = plural(n.toLong(), one, few, many)
+fun meta(vararg parts: String?): String = parts.filter { !it.isNullOrEmpty() }.joinToString(" · ")
 
-fun plural(n: Long, one: String, few: String, many: String): String {
-    val m10 = n % 10
-    val m100 = n % 100
-    return when {
-        m10 == 1L && m100 != 11L -> one
-        m10 in 2L..4L && (m100 < 12L || m100 > 14L) -> few
-        else -> many
-    }
-}
-
-fun filesWord(n: Int) = plural(n, "файл", "файла", "файлов")
-fun itemsWord(n: Int) = plural(n, "объект", "объекта", "объектов")
-
-// ---------------------------------------------------------------- пути
+fun shortLocation(dir: String): String =
+    dir.replace(Regex("^/storage/(emulated/0|[^/]+)")) {
+        if (it.groupValues[1] == "emulated/0") Str.s(R.string.storage_short_internal) else Str.s(R.string.storage_short_sd)
+    }.ifEmpty { "/" }
 
 fun basename(path: String): String = path.trimEnd('/').substringAfterLast('/')
 
@@ -72,30 +58,31 @@ fun extOf(name: String): String {
     return if (i > 0 && i < name.length - 1) name.substring(i + 1).lowercase(Locale.ROOT) else ""
 }
 
-// ---------------------------------------------------------------- типы файлов
+enum class FileKind(@StringRes private val labelRes: Int) {
+    Folder(R.string.kind_folder),
+    Image(R.string.kind_image),
+    Video(R.string.kind_video),
+    Audio(R.string.kind_audio),
+    Archive(R.string.kind_archive),
+    Pdf(R.string.kind_pdf),
+    Apk(R.string.kind_apk),
+    Doc(R.string.kind_doc),
+    Code(R.string.kind_code),
+    Text(R.string.kind_text),
+    File(R.string.kind_file),
+;
 
-enum class FileKind(val label: String) {
-    Folder("Папка"),
-    Image("Изображение"),
-    Video("Видео"),
-    Audio("Аудио"),
-    Archive("Архив"),
-    Pdf("PDF-документ"),
-    Apk("Приложение Android"),
-    Doc("Документ"),
-    Code("Исходный код"),
-    Text("Текстовый файл"),
-    File("Файл"),
+    val label: String get() = Str.s(labelRes)
 }
 
 private val KIND_EXTS: Map<FileKind, Set<String>> = mapOf(
-    FileKind.Image to setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "avif", "svg"),
-    FileKind.Video to setOf("mp4", "mkv", "webm", "avi", "mov", "3gp", "m4v", "flv"),
-    FileKind.Audio to setOf("mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "amr", "wma"),
-    FileKind.Archive to setOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz"),
+    FileKind.Image to setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif", "avif", "svg"),
+    FileKind.Video to setOf("mp4", "mkv", "webm", "avi", "mov", "3gp", "m4v", "flv", "wmv"),
+    FileKind.Audio to setOf("mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "amr", "wma", "mid"),
+    FileKind.Archive to setOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz", "iso"),
     FileKind.Pdf to setOf("pdf"),
-    FileKind.Apk to setOf("apk", "xapk", "aab"),
-    FileKind.Doc to setOf("doc", "docx", "odt", "rtf", "xls", "xlsx", "ods", "ppt", "pptx", "odp", "epub", "fb2", "csv"),
+    FileKind.Apk to setOf("apk", "xapk", "apks", "apkm", "aab"),
+    FileKind.Doc to setOf("doc", "docx", "odt", "rtf", "xls", "xlsx", "ods", "ppt", "pptx", "odp", "epub", "fb2", "csv", "djvu"),
     FileKind.Code to setOf(
         "js", "mjs", "ts", "jsx", "tsx", "json", "html", "htm", "css", "scss", "xml", "java", "kt", "py", "c", "h",
         "cpp", "cs", "go", "rs", "rb", "php", "sh", "bat", "sql", "yml", "yaml", "toml", "gradle", "lua", "swift",
@@ -105,6 +92,11 @@ private val KIND_EXTS: Map<FileKind, Set<String>> = mapOf(
 
 private val KIND_BY_EXT: Map<String, FileKind> =
     KIND_EXTS.flatMap { (k, exts) -> exts.map { it to k } }.toMap()
+
+/** Тип по расширению без точки (нижний регистр) или null. */
+internal fun kindOfExtension(ext: String): FileKind? = KIND_BY_EXT[ext]
+
+internal val APK_EXTENSIONS: Set<String> get() = KIND_EXTS.getValue(FileKind.Apk)
 
 fun kindOf(name: String, dir: Boolean): FileKind =
     if (dir) FileKind.Folder else KIND_BY_EXT[extOf(name)] ?: FileKind.File
@@ -119,8 +111,6 @@ fun FileEntry.isEditable(): Boolean {
     return k == FileKind.Text || k == FileKind.Code || mime.startsWith("text/")
 }
 
-// ---------------------------------------------------------------- архивы по имени
-
 private val ARCHIVE_RE = Regex("""\.(zip|7z|rar|tar|tgz|tbz2?|txz|gz|bz2|xz|jar|cbz)$""", RegexOption.IGNORE_CASE)
 private val MULTI_ARCHIVE_RE = Regex("""\.tar\.(gz|bz2|xz)$""", RegexOption.IGNORE_CASE)
 
@@ -129,13 +119,14 @@ fun isArchive(name: String): Boolean = ARCHIVE_RE.containsMatchIn(name) || MULTI
 fun archiveBase(name: String): String =
     name.replace(MULTI_ARCHIVE_RE, "").replace(Regex("""\.[^.]+$"""), "")
 
-// ---------------------------------------------------------------- сортировка
+enum class SortBy(@StringRes private val labelRes: Int) {
+    NAME(R.string.sort_name),
+    DATE(R.string.sort_date),
+    SIZE(R.string.sort_size),
+    TYPE(R.string.sort_type),
+;
 
-enum class SortBy(val label: String) {
-    NAME("По имени"),
-    DATE("По дате"),
-    SIZE("По размеру"),
-    TYPE("По типу"),
+    val label: String get() = Str.s(labelRes)
 }
 
 /** Естественное сравнение имён: «файл2» раньше «файл10», регистр не важен. */

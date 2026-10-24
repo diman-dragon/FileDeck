@@ -2,22 +2,29 @@ package dev.filedeck.app
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.annotation.StringRes
 
 enum class ViewMode { LIST, GRID }
 
-enum class ThemeMode(val label: String, val hint: String) {
-    AUTO("Как в системе", "Тёмная ночью, светлая днём"),
-    DARK("Тёмная", "Чистый чёрный — экономит заряд на OLED-экранах"),
-    LIGHT("Светлая", "Тёплая светлая тема цвета какао с молоком"),
+enum class ThemeMode(@StringRes private val labelRes: Int, @StringRes private val hintRes: Int) {
+    AUTO(R.string.theme_auto, R.string.theme_auto_hint),
+    DARK(R.string.theme_dark, R.string.theme_dark_hint),
+    LIGHT(R.string.theme_light, R.string.theme_light_hint),
+    ;
+
+    val label: String get() = Str.s(labelRes)
+    val hint: String get() = Str.s(hintRes)
 }
 
-enum class StartScreen(val label: String) {
-    HOME("Главный экран"),
-    PRIMARY("Память телефона"),
-    SD("SD-карта"),
+enum class StartScreen(@StringRes private val labelRes: Int) {
+    HOME(R.string.start_home),
+    PRIMARY(R.string.start_primary),
+    SD(R.string.start_sd),
+    ;
+
+    val label: String get() = Str.s(labelRes)
 }
 
-/** Настройки пользователя. Неизменяемый объект: меняется через copy и сохраняется целиком. */
 data class Settings(
     val view: ViewMode = ViewMode.LIST,
     val sortBy: SortBy = SortBy.NAME,

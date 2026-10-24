@@ -16,13 +16,14 @@ import kotlin.system.exitProcess
 class FileDeckApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        Str.init(this)
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             try {
                 val sw = StringWriter()
                 error.printStackTrace(PrintWriter(sw))
                 val text = ("FileDeck ${BuildConfig.VERSION_NAME}\n" +
                     "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), ${Build.MANUFACTURER} ${Build.MODEL}\n" +
-                    "Поток: ${thread.name}\n\n$sw").take(60_000)
+                    "Thread: ${thread.name}\n\n$sw").take(60_000)
                 try {
                     File(filesDir, "crash.txt").writeText(text)
                 } catch (ignored: Throwable) {

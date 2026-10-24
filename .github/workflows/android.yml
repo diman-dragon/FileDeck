@@ -21,7 +21,6 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # Android SDK уже есть на ubuntu-latest; принимаем лицензии, чтобы Gradle мог докачать platform 36
       - name: Лицензии Android SDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
@@ -32,6 +31,10 @@ jobs:
 
       - name: Тесты
         run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Lint
+        run: ./gradlew --no-daemon lintDebug
+        continue-on-error: true
 
       - name: Сборка APK и AAB
         run: ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease

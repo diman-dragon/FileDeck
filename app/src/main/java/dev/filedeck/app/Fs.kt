@@ -2,6 +2,7 @@ package dev.filedeck.app
 
 import android.content.Context
 import android.os.StatFs
+import android.util.Log
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -18,8 +19,6 @@ import java.util.Locale
 object Fs {
     private const val SEARCH_VISIT_LIMIT = 300_000
 
-    // ---------------------------------------------------------------- накопители
-
     fun roots(ctx: Context): List<StorageRoot> {
         var primary = true
         return FsUtil.storageRoots(ctx).map { root ->
@@ -30,9 +29,10 @@ object Fs {
                 total = fs.totalBytes
                 free = fs.availableBytes
             } catch (ignored: Exception) {
+                Log.w("FileDeck", "Fs: ошибка проигнорирована", ignored)
             }
             val r = StorageRoot(
-                name = if (primary) "Внутренняя память" else "SD-карта",
+                name = if (primary) Str.s(R.string.storage_internal) else Str.s(R.string.start_sd),
                 path = root.absolutePath,
                 primary = primary,
                 total = total,
@@ -42,8 +42,6 @@ object Fs {
             r
         }
     }
-
-    // ---------------------------------------------------------------- чтение каталогов
 
     fun describe(f: File, withCount: Boolean): FileEntry {
         val dir = f.isDirectory
@@ -56,21 +54,20 @@ object Fs {
             size = if (dir) 0L else f.length(),
             mtime = f.lastModified(),
             count = count,
-            mime = if (dir) "" else MimeTypes.of(f.name),
         )
     }
 
     @Throws(IOException::class)
     fun list(path: String): List<FileEntry> {
         val dir = File(path)
-        if (!dir.exists()) throw IOException("Папка не существует")
-        if (!dir.isDirectory) throw IOException("Это не папка")
-        val files = dir.listFiles() ?: throw IOException("Нет доступа к папке")
+        if (!dir.exists()) throw IOException(Str.s(R.string.error_folder_missing))
+        if (!dir.isDirectory) throw IOException(Str.s(R.string.error_not_folder))
+        val files = dir.listFiles() ?: throw IOException(Str.s(R.string.error_folder_no_access))
         return files.map { describe(it, true) }
     }
 
     @Throws(IOException::class)
-    fun search(path: String, query: String, limit: Int = 400): SearchResult {
+    fun search(path: String, query: String, limit: Int = 400, cancelled: () -> Boolean = { false }): SearchResult {
         val q = query.lowercase(Locale.ROOT).trim()
         val out = ArrayList<FileEntry>()
         var truncated = false
@@ -82,12 +79,14 @@ object Fs {
                 val dir = queue.poll() ?: break
                 val children = dir.listFiles() ?: continue
                 for (f in children) {
+                    if (cancelled()) break@outer
+                    if (f.name == TrashStore.TRASH_DIR) continue
                     if (++visited > SEARCH_VISIT_LIMIT) {
                         truncated = true
                         break@outer
                     }
                     if (f.name.lowercase(Locale.ROOT).contains(q)) {
-                        out.add(describe(f, false))
+                        out.add(describe(f, f.isDirectory))
                         if (out.size >= limit) {
                             truncated = true
                             break@outer
@@ -101,7 +100,7 @@ object Fs {
     }
 
     fun size(path: String): SizeInfo {
-        val acc = LongArray(3) // байты, файлы, папки
+        val acc = LongArray(3)
         measure(File(path), acc, true)
         return SizeInfo(acc[0], acc[1], acc[2])
     }
@@ -117,21 +116,19 @@ object Fs {
         }
     }
 
-    // ---------------------------------------------------------------- создание / переименование / удаление
-
     @Throws(IOException::class)
     fun mkdir(path: String): String {
         val f = File(path)
-        if (f.exists()) throw IOException("Папка с таким именем уже есть")
-        if (!f.mkdirs()) throw IOException("Не удалось создать папку")
+        if (f.exists()) throw IOException(Str.s(R.string.error_folder_exists))
+        if (!f.mkdirs()) throw IOException(Str.s(R.string.error_create_folder))
         return f.absolutePath
     }
 
     @Throws(IOException::class)
     fun createFile(path: String): String {
         val f = File(path)
-        if (f.exists()) throw IOException("Файл с таким именем уже есть")
-        if (!f.createNewFile()) throw IOException("Не удалось создать файл")
+        if (f.exists()) throw IOException(Str.s(R.string.error_file_exists))
+        if (!f.createNewFile()) throw IOException(Str.s(R.string.error_create_file))
         return f.absolutePath
     }
 
@@ -139,12 +136,12 @@ object Fs {
     fun rename(path: String, name: String): String {
         val clean = name.trim()
         if (clean.isEmpty() || clean.contains("/") || clean == "." || clean == "..") {
-            throw IOException("Недопустимое имя")
+            throw IOException(Str.s(R.string.error_bad_name))
         }
         val src = File(path)
         val dst = File(src.parentFile, clean)
-        if (dst.exists()) throw IOException("Элемент с таким именем уже существует")
-        if (!src.renameTo(dst)) throw IOException("Не удалось переименовать")
+        if (dst.exists()) throw IOException(Str.s(R.string.error_name_taken))
+        if (!src.renameTo(dst)) throw IOException(Str.s(R.string.error_rename))
         return dst.absolutePath
     }
 
@@ -161,7 +158,7 @@ object Fs {
     @Throws(IOException::class)
     fun transfer(paths: List<String>, dest: String, move: Boolean): OpResult {
         val destDir = File(dest)
-        if (!destDir.isDirectory) throw IOException("Папка назначения недоступна")
+        if (!destDir.isDirectory) throw IOException(Str.s(R.string.error_dest_unavailable))
         val destCanon = destDir.canonicalPath
         val failed = ArrayList<String>()
         var done = 0
@@ -175,7 +172,7 @@ object Fs {
                     continue
                 }
                 // Перенос в ту же папку — ничего не делаем
-                if (move && src.parentFile != null && src.parentFile!!.canonicalPath == destCanon) {
+                if (move && src.parentFile?.canonicalPath == destCanon) {
                     done++
                     continue
                 }
@@ -193,19 +190,18 @@ object Fs {
                 }
                 done++
             } catch (ignored: Exception) {
+                Log.w("FileDeck", "Fs: ошибка проигнорирована", ignored)
                 failed.add(p)
             }
         }
         return OpResult(done, failed)
     }
 
-    // ---------------------------------------------------------------- текст
-
     @Throws(IOException::class)
     fun readText(path: String): String {
         val f = File(path)
-        if (!f.isFile) throw IOException("Файл не найден")
-        if (f.length() > MAX_EDIT_BYTES) throw IOException("Файл слишком большой для редактора (больше 2 МБ)")
+        if (!f.isFile) throw IOException(Str.s(R.string.error_file_not_found))
+        if (f.length() > MAX_EDIT_BYTES) throw IOException(Str.s(R.string.error_file_too_large))
         val bos = ByteArrayOutputStream(maxOf(f.length().toInt(), 16))
         FileInputStream(f).use { it.copyTo(bos, 64 * 1024) }
         return String(bos.toByteArray(), Charsets.UTF_8)
@@ -215,8 +211,6 @@ object Fs {
     fun writeText(path: String, text: String) {
         FileOutputStream(File(path), false).use { it.write(text.toByteArray(Charsets.UTF_8)) }
     }
-
-    // ---------------------------------------------------------------- открыть / поделиться
 
     @Throws(IOException::class)
     fun open(ctx: Context, path: String) = FileOpener.open(ctx, path)

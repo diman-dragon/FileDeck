@@ -1,6 +1,6 @@
 # FileDeck by DataLaw — нативный файловый менеджер для Android
 
-Версия **0.0.2**. Kotlin + Jetpack Compose (Material 3). Без WebView, Node.js и Capacitor.
+Версия **0.0.5**. Kotlin + Jetpack Compose (Material 3).
 
 Обзор памяти и SD-карты, копирование / перенос / удаление, переименование, поиск, просмотр картинок, текстовый
 редактор, сетка и список, сортировка, глубокая очистка (дубликаты, похожие фото, мусор, пустые папки), корзина с
@@ -13,10 +13,10 @@
 3. кладёт `release/filedeck-<версия>*.apk|aab` в артефакты запуска (Actions → запуск → Artifacts).
 
 Тег `vX.Y.Z` дополнительно публикует релиз на GitHub с этими файлами.
-APK подписан ключом из `signing/` — тем же, что у версий 2.x, поэтому ставится **поверх** без удаления (`docs/SIGNING.md`).
+APK подписан ключом из `signing/`, поэтому новые сборки ставятся поверх установленных без удаления (`docs/SIGNING.md`).
 
 ## Правило версий (для людей и для ИИ)
-**Каждое исправление или изменение повышает версию** — патч +1 (0.0.2 → 0.0.3 → 0.0.4 …), без исключений и без «тихих» правок
+**Каждое исправление или изменение повышает версию** — патч +1 (0.0.5 → 0.0.6 → 0.0.7 …), без исключений и без «тихих» правок
 под тем же номером. При каждой выдаче нового архива:
 1. поднять `app.version` в `gradle.properties` (единственный источник; versionCode считается сам);
 2. добавить в начало `CHANGELOG.md` раздел новой версии с описанием правок;
@@ -24,7 +24,7 @@ APK подписан ключом из `signing/` — тем же, что у в�
 Подробнее — `docs/VERSIONING.md`.
 
 ## Локальная сборка
-Нужны JDK 21 и Android SDK (platform 36). Путь к SDK — `ANDROID_HOME` или `local.properties` (`sdk.dir=...`).
+Нужны JDK 21 и Android SDK (platform 36). Минимальная версия Android — 11 (API 30). Путь к SDK — `ANDROID_HOME` или `local.properties` (`sdk.dir=...`).
 
 ```bash
 ./gradlew assembleDebug         # app/build/outputs/apk/debug/app-debug.apk
@@ -48,11 +48,15 @@ APK подписан ключом из `signing/` — тем же, что у в�
 ```
 app/src/main/java/dev/filedeck/app/
   Fs.kt  Archives.kt  Cleaner.kt  Trash.kt  Settings.kt  Format.kt  Models.kt   ядро на Kotlin
-  Zip*/SevenZ*/Tar*/SingleSource, ArchiveSink/Source/Format, FsUtil, FileOpener…  движок форматов (Java)
-  ui/  AppViewModel, MainScreen, CleanerUi, Screens (настройки, корзина, архив, просмотр, редактор), Components, Controllers
+  CleanerService / DuplicateFinder / SimilarImageFinder / CleanerLogic                   очистка
+  FsUtil, FileRules, FileOpener, MimeTypes, Str, FileDeckApp, CrashActivity               утилиты и системная часть
+  Zip*/SevenZ*/Tar*/SingleSource, ArchiveSink/Source/Format…                             движок форматов (Java)
+  ui/  AppViewModel (навигация и состояние) · UiHost (диалоги, прогресс, уведомления) · FileActions (действия над файлами)
+       ArchiveFlows / ArchiveBrowser / TrashController / CleanerController / EditorController — контроллеры экранов
+       MainScreen, CleanerUi, SettingsScreen, TrashScreen, ArchiveScreen, ImageScreen, EditorScreen, AppRoot — экраны
+       Theme, Icons, Widgets, Dialogs — тема и общие элементы
 ```
 
 ## Доступ к файлам
-На Android 11+ нужно «Доступ ко всем файлам» (`MANAGE_EXTERNAL_STORAGE`): при первом запуске приложение откроет
-системный экран. На Android 10 и ниже — обычный запрос доступа к памяти. Для Google Play нужно обоснование разрешения
-(`docs/PUBLISHING.md`).
+Нужно «Доступ ко всем файлам» (`MANAGE_EXTERNAL_STORAGE`): при первом запуске приложение откроет системный экран.
+Для Google Play нужно обоснование разрешения (`docs/PUBLISHING.md`).

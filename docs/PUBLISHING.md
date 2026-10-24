@@ -18,4 +18,4 @@
 - [ ] Тексты магазина — `docs/STORE_LISTING.md`.
 
 ## Стек
-Kotlin 2.2, Jetpack Compose (Material 3), AGP 8.13, Gradle 8.14, JDK 21, minSdk 26, target/compile SDK 36.
+Kotlin 2.2, Jetpack Compose (Material 3), AGP 8.13, Gradle 8.14, JDK 21, minSdk 30 (Android 11), target/compile SDK 36.

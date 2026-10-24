@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="storage_internal">Внутренняя память</string>
+
+    <string name="error_folder_missing">Папка не существует</string>
+    <string name="error_not_folder">Это не папка</string>
+    <string name="error_folder_no_access">Нет доступа к папке</string>
+    <string name="error_folder_exists">Папка с таким именем уже есть</string>
+    <string name="error_create_folder">Не удалось создать папку</string>
+    <string name="error_file_exists">Файл с таким именем уже есть</string>
+    <string name="error_create_file">Не удалось создать файл</string>
+    <string name="error_bad_name">Недопустимое имя</string>
+    <string name="error_name_taken">Элемент с таким именем уже существует</string>
+    <string name="error_rename">Не удалось переименовать</string>
+    <string name="error_dest_unavailable">Папка назначения недоступна</string>
+    <string name="error_file_not_found">Файл не найден</string>
+    <string name="error_file_too_large">Файл слишком большой для редактора (больше 2 МБ)</string>
+    <string name="error_operation_failed">Операция не удалась</string>
+
+    <string name="error_archive_busy">Другая операция с архивом ещё выполняется</string>
+    <string name="error_archive_empty">Нечего архивировать</string>
+    <string name="error_archive_format_unknown">Неизвестный формат архива</string>
+    <string name="error_archive_zip_password_only">Пароль можно задать только для ZIP</string>
+    <string name="error_archive_not_found">Архив не найден</string>
+    <string name="error_archive_format_unrecognized">Формат архива не распознан</string>
+    <string name="error_archive_broken">Архив повреждён или это не ZIP</string>
+    <string name="error_archive_extract_dest">Не удалось создать папку для распаковки</string>
+    <string name="error_archive_mkdir">Не удалось создать папку %1$s</string>
+    <string name="error_rar5">Формат RAR5 пока не поддерживается. RAR 4 и старше открываются.</string>
+    <string name="error_password_required">Архив защищён паролем</string>
+    <string name="error_password_wrong">Неверный пароль</string>
+
+    <string name="error_open_no_app">Нет приложения для открытия этого файла</string>
+    <string name="error_open_failed">Не удалось открыть файл: %1$s</string>
+    <string name="error_share_nothing">Нечем делиться</string>
+    <string name="error_share_folders">Поделиться можно только файлами, не папками</string>
+    <string name="error_share_failed">Не удалось поделиться: %1$s</string>
+
+    <string name="cat_duplicates">Дубликаты</string>
+    <string name="cat_duplicates_hint">Одинаковые файлы по содержимому, даже с разными именами</string>
+    <string name="cat_similar">Похожие фото</string>
+    <string name="cat_similar_hint">Серии кадров и копии разного размера · сканирование дольше</string>
+    <string name="cat_junk">Мусор и кэш</string>
+    <string name="cat_junk_hint">Временные файлы, логи, миниатюры, недокачанное</string>
+    <string name="cat_apks">Установщики APK</string>
+    <string name="cat_apks_hint">Файлы приложений, которые уже не нужны</string>
+    <string name="cat_largest">Самые большие файлы</string>
+    <string name="cat_largest_hint">Что занимает больше всего места</string>
+    <string name="cat_empty_folders">Пустые папки</string>
+    <string name="cat_empty_folders_hint">Папки без единого файла</string>
+    <string name="cat_zero_files">Пустые файлы</string>
+    <string name="cat_zero_files_hint">Файлы размером 0 байт</string>
+
+    <string name="junk_cache">Кэш</string>
+    <string name="junk_temp">Временные</string>
+    <string name="junk_thumbnails">Миниатюры</string>
+    <string name="junk_logs">Логи</string>
+    <string name="junk_trashed">Из системной корзины</string>
+    <string name="junk_system">Служебные</string>
+    <string name="junk_trash">Корзина приложения</string>
+    <string name="junk_messenger">Статусы мессенджера</string>
+    <string name="junk_partial">Недокачанное</string>
+    <string name="junk_other">Мусор</string>
+
+    <string name="usage_images">Фото</string>
+    <string name="usage_audio">Музыка</string>
+    <string name="usage_docs">Документы</string>
+    <string name="usage_archives">Архивы</string>
+    <string name="usage_apk">APK</string>
+    <string name="usage_other">Другое</string>
+
+    <string name="theme_auto">Как в системе</string>
+    <string name="theme_auto_hint">Тёмная ночью, светлая днём</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="theme_dark_hint">Чистый чёрный — экономит заряд на OLED-экранах</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_light_hint">Тёплая светлая тема цвета какао с молоком</string>
+
+    <string name="start_home">Главный экран</string>
+    <string name="start_primary">Память телефона</string>
+    <string name="start_sd">SD-карта</string>
+
+    <string name="sort_name">По имени</string>
+    <string name="sort_date">По дате</string>
+    <string name="sort_size">По размеру</string>
+    <string name="sort_type">По типу</string>
+
+    <string name="kind_folder">Папка</string>
+    <string name="kind_image">Изображение</string>
+    <string name="kind_video">Видео</string>
+    <string name="kind_audio">Аудио</string>
+    <string name="kind_archive">Архив</string>
+    <string name="kind_pdf">PDF-документ</string>
+    <string name="kind_apk">Приложение Android</string>
+    <string name="kind_doc">Документ</string>
+    <string name="kind_code">Исходный код</string>
+    <string name="kind_text">Текстовый файл</string>
+    <string name="kind_file">Файл</string>
+
+    <string name="unit_b">Б</string>
+    <string name="unit_kb">КБ</string>
+    <string name="unit_mb">МБ</string>
+    <string name="unit_gb">ГБ</string>
+    <string name="unit_tb">ТБ</string>
+    <string-array name="months_short">
+        <item>янв</item><item>фев</item><item>мар</item><item>апр</item><item>мая</item><item>июн</item>
+        <item>июл</item><item>авг</item><item>сен</item><item>окт</item><item>ноя</item><item>дек</item>
+    </string-array>
+
+    <string name="crash_title">FileDeck закрылся из-за ошибки</string>
+    <string name="crash_hint">Нажмите «Поделиться» или «Копировать» и отправьте текст разработчику.</string>
+    <string name="crash_no_data">Нет данных об ошибке</string>
+    <string name="crash_share_chooser">Отправить отчёт</string>
+    <string name="action_copy">Копировать</string>
+    <string name="action_copied">Скопировано</string>
+    <string name="action_share">Поделиться</string>
+    <string name="action_close">Закрыть</string>
+</resources>

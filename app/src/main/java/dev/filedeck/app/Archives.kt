@@ -1,16 +1,18 @@
 package dev.filedeck.app
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import net.lingala.zip4j.ZipFile
-import net.lingala.zip4j.exception.ZipException
+import android.util.Log
+import com.github.junrar.Junrar
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.lang.reflect.InvocationTargetException
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import net.lingala.zip4j.ZipFile
+import net.lingala.zip4j.exception.ZipException
 
 /**
  * Архиватор FileDeck.
@@ -23,17 +25,12 @@ import java.util.Locale
  * Форматы читают и пишут Java-классы ArchiveSource / ArchiveSink — они проверены тестами и не менялись.
  */
 class ArchiveService {
-    @Volatile
-    private var cancelFlag = false
-
-    @Volatile
-    private var busy = false
+    private val cancelFlag = AtomicBoolean(false)
+    private val busy = AtomicBoolean(false)
 
     fun cancel() {
-        cancelFlag = true
+        cancelFlag.set(true)
     }
-
-    val isBusy: Boolean get() = busy
 
     private class Host(
         private val cancelled: () -> Boolean,
@@ -54,12 +51,11 @@ class ArchiveService {
     }
 
     private suspend fun <T> guarded(onProgress: (ArchiveProgress) -> Unit, job: (ArchiveHost) -> T): Outcome<T> {
-        if (busy) return Outcome.Err("BUSY", "Другая операция с архивом ещё выполняется")
-        busy = true
-        cancelFlag = false
+        if (!busy.compareAndSet(false, true)) return Outcome.Err("BUSY", Str.s(R.string.error_archive_busy))
+        cancelFlag.set(false)
         return try {
             withContext<Outcome<T>>(Dispatchers.IO) {
-                val host = Host({ cancelFlag }, onProgress)
+                val host = Host({ cancelFlag.get() }, onProgress)
                 try {
                     Outcome.Ok(job(host))
                 } catch (ignored: Cancelled) {
@@ -72,7 +68,7 @@ class ArchiveService {
                 }
             }
         } finally {
-            busy = false
+            busy.set(false)
         }
     }
 
@@ -102,8 +98,6 @@ class ArchiveService {
         extractArchive(host, path, destDir, password, mode, only)
     }
 
-    // ------------------------------------------------------------------ создание
-
     private fun createArchive(
         host: ArchiveHost,
         paths: List<String>,
@@ -113,13 +107,13 @@ class ArchiveService {
         password: String,
         level: Int,
     ): ArchiveCreated {
-        if (paths.isEmpty()) throw ArchiveError("EMPTY", "Нечего архивировать")
-        if (fmt == ArchiveFormat.UNKNOWN) throw ArchiveError("FORMAT", "Неизвестный формат архива")
+        if (paths.isEmpty()) throw ArchiveError("EMPTY", Str.s(R.string.error_archive_empty))
+        if (fmt == ArchiveFormat.UNKNOWN) throw ArchiveError("FORMAT", Str.s(R.string.error_archive_format_unknown))
         val dest = File(destDir)
-        if (!dest.isDirectory) throw ArchiveError("DEST", "Папка назначения недоступна")
+        if (!dest.isDirectory) throw ArchiveError("DEST", Str.s(R.string.error_dest_unavailable))
         val usePassword = password.isNotEmpty()
         if (usePassword && fmt != ArchiveFormat.ZIP) {
-            throw ArchiveError("PASSWORD_UNSUPPORTED", "Пароль поддерживается только для ZIP")
+            throw ArchiveError("PASSWORD_UNSUPPORTED", Str.s(R.string.error_archive_zip_password_only))
         }
 
         val base = ArchiveFormat.stripExtension(name.trim().ifEmpty { "archive" }).replace("/", "_")
@@ -133,7 +127,7 @@ class ArchiveService {
             if (!f.exists()) continue
             total += collect(f, f.name, items, targetCanon)
         }
-        if (items.isEmpty()) throw ArchiveError("EMPTY", "Нечего архивировать")
+        if (items.isEmpty()) throw ArchiveError("EMPTY", Str.s(R.string.error_archive_empty))
 
         var opened: ArchiveSink? = null
         try {
@@ -166,7 +160,7 @@ class ArchiveService {
             try {
                 opened?.close()
             } catch (ignored: Throwable) {
-                // уже в ошибке
+                Log.w("FileDeck", "Archives: ошибка проигнорирована", ignored)
             }
             target.delete()
             throw t
@@ -193,13 +187,11 @@ class ArchiveService {
         return f.length()
     }
 
-    // ------------------------------------------------------------------ просмотр
-
     private fun listArchive(host: ArchiveHost, path: String, password: String): ArchiveListing {
         val f = File(path)
-        if (!f.isFile) throw ArchiveError("PATH", "Архив не найден")
+        if (!f.isFile) throw ArchiveError("PATH", Str.s(R.string.error_archive_not_found))
         val fmt = ArchiveFormat.detect(f)
-        if (fmt == ArchiveFormat.UNKNOWN) throw ArchiveError("FORMAT", "Формат архива не распознан")
+        if (fmt == ArchiveFormat.UNKNOWN) throw ArchiveError("FORMAT", Str.s(R.string.error_archive_format_unrecognized))
 
         val arr = ArrayList<ArchiveEntryInfo>()
         var totalSize = 0L
@@ -221,7 +213,7 @@ class ArchiveService {
                     }
                 }
             } catch (e: ZipException) {
-                throw ArchiveError("BROKEN", "Архив повреждён или это не ZIP")
+                throw ArchiveError("BROKEN", Str.s(R.string.error_archive_broken))
             }
         } else if (fmt == ArchiveFormat.RAR) {
             listing = false
@@ -255,8 +247,6 @@ class ArchiveService {
         return ArchiveEntryInfo(clean, dir, maxOf(0L, size), mtime)
     }
 
-    // ------------------------------------------------------------------ распаковка
-
     private fun extractArchive(
         host: ArchiveHost,
         path: String,
@@ -267,21 +257,21 @@ class ArchiveService {
     ): ArchiveExtracted {
         val f = File(path)
         val dest = File(destDir)
-        if (!f.isFile) throw ArchiveError("PATH", "Архив не найден")
-        if (!dest.isDirectory) throw ArchiveError("DEST", "Папка назначения недоступна")
+        if (!f.isFile) throw ArchiveError("PATH", Str.s(R.string.error_archive_not_found))
+        if (!dest.isDirectory) throw ArchiveError("DEST", Str.s(R.string.error_dest_unavailable))
         val fmt = ArchiveFormat.detect(f)
-        if (fmt == ArchiveFormat.UNKNOWN) throw ArchiveError("FORMAT", "Формат архива не распознан")
+        if (fmt == ArchiveFormat.UNKNOWN) throw ArchiveError("FORMAT", Str.s(R.string.error_archive_format_unrecognized))
 
         val base = ArchiveFormat.stripExtension(f.name)
         val here = mode == "here" && fmt != ArchiveFormat.RAR
         val root = if (here) dest else FsUtil.uniqueTarget(dest, base)
         var createdRoot = false
         if (!here) {
-            if (!root.mkdirs()) throw ArchiveError("DEST", "Не удалось создать папку для распаковки")
+            if (!root.mkdirs()) throw ArchiveError("DEST", Str.s(R.string.error_archive_extract_dest))
             createdRoot = true
         }
         val topMap = HashMap<String, String>()
-        val created = ArrayList<File>() // верхнеуровневые результаты для отката в режиме «сюда»
+        val created = ArrayList<File>()
         var count = 0L
         try {
             if (fmt == ArchiveFormat.RAR) {
@@ -306,7 +296,7 @@ class ArchiveService {
                                 } else {
                                     val parent = out.parentFile
                                     if (parent != null && !parent.isDirectory && !parent.mkdirs()) {
-                                        throw ArchiveError("DEST", "Не удалось создать папку " + parent.name)
+                                        throw ArchiveError("DEST", Str.f(R.string.error_archive_mkdir, parent.name))
                                     }
                                     BufferedOutputStream(FileOutputStream(out), ArchiveIO.BUF).use { os ->
                                         val input = src.stream()
@@ -374,30 +364,21 @@ class ArchiveService {
     @Throws(IOException::class)
     private fun extractRar(rar: File, destDir: File, password: String) {
         try {
-            val c = Class.forName("com.github.junrar.Junrar")
-            if (password.isEmpty()) {
-                c.getMethod("extract", File::class.java, File::class.java).invoke(null, rar, destDir)
-            } else {
-                c.getMethod("extract", File::class.java, File::class.java, String::class.java)
-                    .invoke(null, rar, destDir, password)
+            if (password.isEmpty()) Junrar.extract(rar, destDir) else Junrar.extract(rar, destDir, password)
+        } catch (e: Exception) {
+            val name = e.javaClass.simpleName.lowercase(Locale.ROOT)
+            val msg = e.message.orEmpty().lowercase(Locale.ROOT)
+            when {
+                name.contains("v5") || msg.contains("rar5") || msg.contains("v5") ->
+                    throw ArchiveError("RAR5", Str.s(R.string.error_rar5))
+                name.contains("password") || msg.contains("password") || name.contains("crc") || msg.contains("crc") ->
+                    throw if (password.isEmpty()) {
+                        ArchiveError("PASSWORD_REQUIRED", Str.s(R.string.error_password_required))
+                    } else {
+                        ArchiveError("WRONG_PASSWORD", Str.s(R.string.error_password_wrong))
+                    }
+                else -> throw IOException(e.message ?: name)
             }
-        } catch (ite: InvocationTargetException) {
-            val cause = ite.cause ?: ite
-            val cn = cause.javaClass.simpleName.lowercase(Locale.ROOT)
-            val msg = cause.message.toString().lowercase(Locale.ROOT)
-            if (cn.contains("v5") || msg.contains("rar5") || msg.contains("v5")) {
-                throw ArchiveError("RAR5", "Формат RAR5 пока не поддерживается (RAR 4 и старше — работает)")
-            }
-            if (cn.contains("password") || msg.contains("password") || cn.contains("crc") || msg.contains("crc")) {
-                throw if (password.isEmpty()) {
-                    ArchiveError("PASSWORD_REQUIRED", "Архив защищён паролем")
-                } else {
-                    ArchiveError("WRONG_PASSWORD", "Неверный пароль")
-                }
-            }
-            throw IOException("Не удалось распаковать RAR: " + cause.message)
-        } catch (e: ReflectiveOperationException) {
-            throw ArchiveError("FORMAT", "Поддержка RAR недоступна в этой сборке")
         }
     }
 
@@ -419,9 +400,8 @@ class ArchiveService {
     }
 }
 
-/** Понятные тексты ошибок архиватора. */
 fun explainArchiveError(code: String, message: String): String = when (code) {
-    "RAR5" -> "Формат RAR5 пока не поддерживается. RAR 4 и старше открываются."
-    "PASSWORD_UNSUPPORTED" -> "Пароль можно задать только для ZIP"
-    else -> message.ifEmpty { "Операция не удалась" }
+    "RAR5" -> Str.s(R.string.error_rar5)
+    "PASSWORD_UNSUPPORTED" -> Str.s(R.string.error_archive_zip_password_only)
+    else -> message.ifEmpty { Str.s(R.string.error_operation_failed) }
 }

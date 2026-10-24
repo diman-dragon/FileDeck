@@ -1,12 +1,14 @@
 package dev.filedeck.app
 
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
+import android.util.Log
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 /** Хранилище корзины: на каждом накопителе скрытая папка .FileDeckTrash; у каждого элемента есть .json с метаданными. */
 object TrashStore {
@@ -30,15 +32,16 @@ internal class TrashEntry(
  * Корзина FileDeck: перенос в скрытую папку на том же накопителе (мгновенно), список, восстановление,
  * удаление навсегда с прогрессом и автоочистка по сроку.
  */
-class TrashService(private val ctx: Context) {
-    @Volatile
-    private var cancelFlag = false
+class TrashService(private val rootsProvider: () -> List<File>) {
+    constructor(ctx: Context) : this({ FsUtil.storageRoots(ctx) })
+
+    private val cancelFlag = AtomicBoolean(false)
 
     fun cancel() {
-        cancelFlag = true
+        cancelFlag.set(true)
     }
 
-    private fun roots(): List<File> = FsUtil.storageRoots(ctx)
+    private fun roots(): List<File> = rootsProvider()
 
     private fun rootFor(f: File): File? {
         var best: File? = null
@@ -55,7 +58,7 @@ class TrashService(private val ctx: Context) {
     @Throws(IOException::class)
     private fun trashDir(root: File): File {
         val td = File(root, TrashStore.TRASH_DIR)
-        if (!td.isDirectory && !td.mkdirs()) throw IOException("Не удалось создать корзину")
+        if (!td.isDirectory && !td.mkdirs()) throw IOException("Cannot create trash directory")
         val nomedia = File(td, ".nomedia")
         if (!nomedia.exists()) nomedia.createNewFile()
         return td
@@ -90,7 +93,7 @@ class TrashService(private val ctx: Context) {
                         )
                     )
                 } catch (ignored: Exception) {
-                    // повреждённые метаданные — пропускаем
+                    Log.w("FileDeck", "Trash: ошибка проигнорирована", ignored)
                 }
             }
         }
@@ -105,13 +108,13 @@ class TrashService(private val ctx: Context) {
         for (p in paths) {
             val src = File(p)
             try {
-                if (!src.exists()) throw IOException("нет файла")
-                val root = rootFor(src) ?: throw IOException("неизвестный накопитель")
-                if (src.absolutePath == root.absolutePath) throw IOException("корень")
+                if (!src.exists()) throw IOException("source missing")
+                val root = rootFor(src) ?: throw IOException("unknown storage")
+                if (src.absolutePath == root.absolutePath) throw IOException("storage root")
                 val td = trashDir(root)
                 val tdPath = td.absolutePath
                 if (src.absolutePath == tdPath || src.absolutePath.startsWith("$tdPath/")) {
-                    throw IOException("уже в корзине")
+                    throw IOException("already in trash")
                 }
                 val id = UUID.randomUUID().toString()
                 val size = FsUtil.sizeOf(src)
@@ -125,7 +128,7 @@ class TrashService(private val ctx: Context) {
                 metaFile.writeText(meta.toString(), Charsets.UTF_8)
                 if (!FsUtil.moveTo(src, File(td, id))) {
                     metaFile.delete()
-                    throw IOException("не удалось переместить")
+                    throw IOException("move failed")
                 }
                 done++
                 moved += size
@@ -146,12 +149,12 @@ class TrashService(private val ctx: Context) {
             val failed = ArrayList<String>()
             val restored = ArrayList<String>()
             val targets = readTrash().filter { it.id in ids }
-            cancelFlag = false
+            cancelFlag.set(false)
             var cancelled = false
             var done = 0
             var step = 0
             for (t in targets) {
-                if (cancelFlag) {
+                if (cancelFlag.get()) {
                     cancelled = true
                     break
                 }
@@ -159,10 +162,10 @@ class TrashService(private val ctx: Context) {
                 step++
                 try {
                     val orig = File(t.orig)
-                    val parent = orig.parentFile ?: throw IOException("нет папки")
-                    if (!parent.isDirectory && !parent.mkdirs()) throw IOException("нет папки")
+                    val parent = orig.parentFile ?: throw IOException("no parent folder")
+                    if (!parent.isDirectory && !parent.mkdirs()) throw IOException("no parent folder")
                     val target = FsUtil.uniqueTarget(parent, orig.name)
-                    if (!FsUtil.moveTo(t.content, target)) throw IOException("не удалось восстановить")
+                    if (!FsUtil.moveTo(t.content, target)) throw IOException("restore failed")
                     t.metaFile.delete()
                     restored.add(target.absolutePath)
                     done++
@@ -180,7 +183,7 @@ class TrashService(private val ctx: Context) {
         sweepOrphans: Boolean,
         onProgress: (TrashProgress) -> Unit,
     ): TrashDeleteResult {
-        cancelFlag = false
+        cancelFlag.set(false)
         val total = targets.sumOf { it.size }
         var doneBytes = 0L
         val count = targets.size
@@ -188,7 +191,7 @@ class TrashService(private val ctx: Context) {
         var freed = 0L
         var cancelled = false
         for (t in targets) {
-            if (cancelFlag) {
+            if (cancelFlag.get()) {
                 cancelled = true
                 break
             }
@@ -210,7 +213,6 @@ class TrashService(private val ctx: Context) {
             if (total == 0L) onProgress(TrashProgress(done.toDouble() / maxOf(1, count), t.name))
         }
         if (sweepOrphans && !cancelled) {
-            // осиротевшие файлы без метаданных
             for (root in roots()) {
                 val rest = File(root, TrashStore.TRASH_DIR).listFiles() ?: continue
                 for (f in rest) {

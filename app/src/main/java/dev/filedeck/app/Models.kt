@@ -1,18 +1,16 @@
 package dev.filedeck.app
 
-/** Файл или папка в списке. */
 data class FileEntry(
     val name: String,
     val path: String,
     val dir: Boolean,
     val size: Long,
     val mtime: Long,
-    /** Для папки — число элементов (если считали). */
     val count: Int = 0,
-    val mime: String = "",
-)
+) {
+    val mime: String get() = if (dir) "" else MimeTypes.of(name)
+}
 
-/** Накопитель: внутренняя память или SD-карта. */
 data class StorageRoot(
     val name: String,
     val path: String,
@@ -28,10 +26,7 @@ data class SearchResult(val entries: List<FileEntry>, val truncated: Boolean)
 
 data class SizeInfo(val size: Long, val files: Long, val folders: Long)
 
-/** Итог пакетной операции: сколько сделано и какие пути не удались. */
 data class OpResult(val done: Int, val failed: List<String>)
-
-// ---------------------------------------------------------------- архивы
 
 data class ArchiveProgress(val op: String, val fraction: Double, val current: String?)
 
@@ -45,21 +40,17 @@ data class ArchiveListing(
     val count: Long,
     val bytes: Long,
     val encrypted: Boolean,
-    /** false — содержимое показать нельзя (RAR), но распаковать можно. */
     val listing: Boolean,
     val truncated: Boolean,
 )
 
 data class ArchiveExtracted(val path: String, val count: Long)
 
-/** Результат длинной операции с архивом. */
 sealed interface Outcome<out T> {
     data class Ok<T>(val value: T) : Outcome<T>
     data object Aborted : Outcome<Nothing>
     data class Err(val code: String, val message: String) : Outcome<Nothing>
 }
-
-// ---------------------------------------------------------------- корзина
 
 data class TrashItem(
     val id: String,
@@ -79,8 +70,6 @@ data class TrashRestoreResult(val done: Int, val failed: List<String>, val resto
 data class TrashDeleteResult(val done: Int, val bytes: Long, val cancelled: Boolean)
 
 data class TrashProgress(val fraction: Double, val current: String?)
-
-// ---------------------------------------------------------------- очистка
 
 data class CleanerOptions(
     val primary: Boolean = true,
@@ -120,7 +109,6 @@ data class ScanResult(
     val largest: List<BigFile>,
     val emptyFolders: List<String>,
     val zeroFiles: List<String>,
-    /** Ключи по порядку: images, video, audio, docs, archives, apk, other. */
     val usage: Map<String, UsageStat>,
     val stats: ScanStats,
 )
@@ -135,7 +123,6 @@ data class ScanProgress(
     val current: String?,
 )
 
-/** Универсальная строка в списке результатов очистки. */
 data class CleanRow(
     val path: String,
     val size: Long,
@@ -150,7 +137,6 @@ data class CleanRow(
     val version: String? = null,
 )
 
-/** Состояние поиска по файлам. */
 data class SearchState(
     val q: String = "",
     val results: List<FileEntry> = emptyList(),

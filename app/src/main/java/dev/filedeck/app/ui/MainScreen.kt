@@ -1,5 +1,6 @@
 package dev.filedeck.app.ui
 
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,6 +9,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -28,13 +30,16 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -42,12 +47,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -58,16 +63,18 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import dev.filedeck.app.FileEntry
 import dev.filedeck.app.FileKind
+import dev.filedeck.app.R
 import dev.filedeck.app.StorageRoot
+import dev.filedeck.app.Str
 import dev.filedeck.app.ViewMode
-import dev.filedeck.app.filesWord
 import dev.filedeck.app.formatDate
 import dev.filedeck.app.formatSize
-import dev.filedeck.app.itemsWord
 import dev.filedeck.app.joinPath
 import dev.filedeck.app.kind
-import dev.filedeck.app.plural
+import dev.filedeck.app.meta
+import dev.filedeck.app.parentOf
 import java.io.File
+import kotlinx.coroutines.delay
 
 @Composable
 fun MainScreen(vm: AppViewModel) {
@@ -83,14 +90,12 @@ fun MainScreen(vm: AppViewModel) {
                     onClick = { vm.fabMenu() },
                     containerColor = fd.manila, contentColor = fd.onManila,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
-                ) { Icon(Icons2.add, "Создать") }
+                ) { Icon(Icons2.add, Str.s(R.string.s_sozdat)) }
             }
         }
         if (dockVisible) Dock(vm, selecting) else Spacer(Modifier.navigationBarsPadding())
     }
 }
-
-// ======================================================================== верхняя панель
 
 @Composable
 private fun TopBar(vm: AppViewModel) {
@@ -100,27 +105,27 @@ private fun TopBar(vm: AppViewModel) {
     Column(Modifier.fillMaxWidth().background(fd.chrome).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             when {
-                searching -> FdIconButton(Icons2.back, "Закрыть поиск", { vm.exitSearch() })
-                path != null && vm.perm == true -> FdIconButton(Icons2.back, "Наверх", { vm.up() })
+                searching -> FdIconButton(Icons2.back, Str.s(R.string.s_zakryt_poisk), { vm.exitSearch() })
+                path != null && vm.perm == true -> FdIconButton(Icons2.back, Str.s(R.string.s_naverh), { vm.up() })
                 else -> Box(Modifier.padding(start = 12.dp, end = 8.dp).size(28.dp).clip(RoundedCornerShape(8.dp)).background(fd.manila), contentAlignment = Alignment.Center) {
                     Text("D", color = fd.onManila, fontWeight = FontWeight.ExtraBold)
                 }
             }
             Switcher(vm, Modifier.weight(1f))
-            if (vm.perm == true) FdIconButton(Icons2.search, "Поиск", { vm.startSearch() })
-            FdIconButton(Icons2.settings, "Настройки", { vm.openSettings() })
+            if (vm.perm == true) FdIconButton(Icons2.search, Str.s(R.string.s_poisk), { vm.startSearch() })
+            FdIconButton(Icons2.settings, Str.s(R.string.s_nastroyki), { vm.openSettings() })
         }
         when {
             n > 0 -> Row(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                FdIconButton(Icons2.close, "Отменить выбор", { vm.clearSelection() })
-                Text("$n ${plural(n, "выбран", "выбрано", "выбрано")}", color = fd.text, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                FdIconButton(Icons2.selectAll, "Выбрать всё", { vm.selectAll() })
+                FdIconButton(Icons2.close, Str.s(R.string.s_otmenit_vybor), { vm.clearSelection() })
+                Text("$n ${Str.p(R.plurals.word_selected, n)}", color = fd.text, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                FdIconButton(Icons2.selectAll, Str.s(R.string.s_vybrat_vse), { vm.selectAll() })
             }
             searching -> SearchField(vm)
             path != null && vm.perm == true -> Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
                 Crumbs(vm, path, Modifier.weight(1f))
                 FdIconButton(
-                    if (vm.settings.view == ViewMode.LIST) Icons2.grid else Icons2.list, "Сменить вид",
+                    if (vm.settings.view == ViewMode.LIST) Icons2.grid else Icons2.list, Str.s(R.string.s_smenit_vid),
                     { vm.updateSettings { it.copy(view = if (it.view == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST) } },
                 )
             }
@@ -134,7 +139,7 @@ private fun Switcher(vm: AppViewModel, modifier: Modifier) {
     val hasSd = vm.roots.any { !it.primary }
     Row(modifier.padding(horizontal = 4.dp).clip(RoundedCornerShape(20.dp)).background(fd.surface3).padding(3.dp)) {
         @Composable
-        fun seg(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, active: Boolean, dim: Boolean, onClick: () -> Unit) {
+        fun seg(label: String, icon: ImageVector, active: Boolean, dim: Boolean, onClick: () -> Unit) {
             Row(
                 Modifier.weight(1f).clip(RoundedCornerShape(17.dp)).background(if (active) fd.manila else Color.Transparent)
                     .clickable(onClick = onClick).padding(vertical = 8.dp),
@@ -146,8 +151,8 @@ private fun Switcher(vm: AppViewModel, modifier: Modifier) {
                 Text(label, color = c, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             }
         }
-        seg("Память", Icons2.drive, cur?.primary == true, false) { vm.switchRoot(false) }
-        seg("SD-карта", Icons2.sd, cur != null && !cur.primary, vm.perm == true && !hasSd) { vm.switchRoot(true) }
+        seg(Str.s(R.string.storage_short_internal), Icons2.drive, cur?.primary == true, false) { vm.switchRoot(false) }
+        seg(Str.s(R.string.start_sd), Icons2.sd, cur != null && !cur.primary, vm.perm == true && !hasSd) { vm.switchRoot(true) }
     }
 }
 
@@ -160,7 +165,7 @@ private fun Crumbs(vm: AppViewModel, path: String, modifier: Modifier) {
     LaunchedEffect(path) { scroll.scrollTo(scroll.maxValue) }
     Row(modifier.horizontalScroll(scroll).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         fun tab(label: String, target: String, current: Boolean) = Pair(label, Pair(target, current))
-        val tabs = mutableListOf(tab(if (root == null) "/" else if (root.primary) "Память" else "SD-карта", base.ifEmpty { "/" }, parts.isEmpty()))
+        val tabs = mutableListOf(tab(if (root == null) "/" else if (root.primary) Str.s(R.string.storage_short_internal) else Str.s(R.string.start_sd), base.ifEmpty { "/" }, parts.isEmpty()))
         var acc = base
         parts.forEachIndexed { i, p ->
             acc = joinPath(acc, p)
@@ -182,12 +187,12 @@ private fun SearchField(vm: AppViewModel) {
     val s = vm.search ?: return
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(120)
-        try { focus.requestFocus() } catch (e: Exception) { /* поле ещё не готово */ }
+        delay(120)
+        try { focus.requestFocus() } catch (e: Exception) { Log.w("FileDeck", "ignored") }
     }
     TextField(
         value = s.q, onValueChange = { vm.runSearch(it) }, singleLine = true,
-        placeholder = { Text(if (vm.path != null) "Поиск в этой папке" else "Поиск по памяти") },
+        placeholder = { Text(if (vm.path != null) Str.s(R.string.s_poisk_v_etoy_papke) else Str.s(R.string.s_poisk_po_pamyati)) },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { vm.runSearch(s.q) }),
         colors = TextFieldDefaults.colors(
@@ -199,8 +204,6 @@ private fun SearchField(vm: AppViewModel) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).focusRequester(focus),
     )
 }
-
-// ======================================================================== содержимое
 
 @Composable
 private fun Content(vm: AppViewModel) {
@@ -219,38 +222,38 @@ private fun PermissionView(vm: AppViewModel) {
             Icon(Icons2.lock, null, tint = fd.manila, modifier = Modifier.size(34.dp))
         }
         Spacer(Modifier.height(20.dp))
-        Text("Нужен доступ ко всем файлам", color = fd.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        Text(Str.s(R.string.s_nuzhen_dostup_ko_vsem_faylam), color = fd.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Text(
-            "FileDeck показывает и меняет файлы на устройстве. Android просит выдать это разрешение отдельно: включите переключатель в системных настройках и вернитесь в приложение.",
+            Str.s(R.string.s_filedeck_pokazyvaet_i_menyaet_fayly),
             color = fd.muted, fontSize = 14.sp, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
-        PrimaryButton("Выдать доступ", { vm.requestPermission() }, Modifier.fillMaxWidth())
+        PrimaryButton(Str.s(R.string.s_vydat_dostup), { vm.requestPermission() }, Modifier.fillMaxWidth())
     }
 }
 
 private val QUICK = listOf(
-    Triple("Download", "Загрузки", Icons2.download),
-    Triple("DCIM", "Камера", Icons2.camera),
-    Triple("Pictures", "Картинки", Icons2.image),
-    Triple("Music", "Музыка", Icons2.audio),
-    Triple("Movies", "Видео", Icons2.video),
-    Triple("Documents", "Документы", Icons2.file),
+    Triple("Download", Str.s(R.string.s_zagruzki), Icons2.download),
+    Triple("DCIM", Str.s(R.string.s_kamera), Icons2.camera),
+    Triple("Pictures", Str.s(R.string.s_kartinki), Icons2.image),
+    Triple("Music", Str.s(R.string.usage_audio), Icons2.audio),
+    Triple("Movies", Str.s(R.string.kind_video), Icons2.video),
+    Triple("Documents", Str.s(R.string.usage_docs), Icons2.file),
 )
 
 @Composable
 private fun HomeView(vm: AppViewModel) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (vm.roots.isEmpty()) Text("Накопители не найдены", color = fd.muted, modifier = Modifier.padding(16.dp))
+            if (vm.roots.isEmpty()) Text(Str.s(R.string.s_nakopiteli_ne_naydeny), color = fd.muted, modifier = Modifier.padding(16.dp))
             vm.roots.forEach { StorageCard(it) { vm.go(it.path) } }
         }
         Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ToolCard("Очистка", "дубликаты, мусор, пустые папки", Icons2.sparkle, true, Modifier.weight(1f)) { vm.openCleaner() }
-            ToolCard("Корзина", vm.trashLabel(), Icons2.delete, false, Modifier.weight(1f)) { vm.openTrash() }
+            ToolCard(Str.s(R.string.s_ochistka), Str.s(R.string.s_dublikaty_musor_pustye_papki), Icons2.sparkle, true, Modifier.weight(1f)) { vm.openCleaner() }
+            ToolCard(Str.s(R.string.s_korzina), vm.trashLabel(), Icons2.delete, false, Modifier.weight(1f)) { vm.openTrash() }
         }
-        SectionTitle("Быстрый доступ")
+        SectionTitle(Str.s(R.string.s_bystryy_dostup))
         val root = vm.primaryRoot()
         if (root != null) {
             QUICK.chunked(3).forEach { rowItems ->
@@ -294,12 +297,12 @@ private fun StorageCard(r: StorageRoot, onClick: () -> Unit) {
             }
         }
         Spacer(Modifier.height(10.dp))
-        Text("${formatSize(r.free)} свободно из ${formatSize(r.total)}", color = fd.muted, fontSize = 13.sp)
+        Text(Str.f(R.string.s_svobodno_iz, formatSize(r.free), formatSize(r.total)), color = fd.muted, fontSize = 13.sp)
     }
 }
 
 @Composable
-private fun ToolCard(title: String, sub: String, icon: androidx.compose.ui.graphics.vector.ImageVector, main: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun ToolCard(title: String, sub: String, icon: ImageVector, main: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val bg = if (main) fd.manila else fd.surface2
     val fg = if (main) fd.onManila else fd.text
     Column(modifier.clip(RoundedCornerShape(20.dp)).background(bg).clickable(onClick = onClick).padding(16.dp)) {
@@ -310,8 +313,6 @@ private fun ToolCard(title: String, sub: String, icon: androidx.compose.ui.graph
     }
 }
 
-// ======================================================================== список файлов
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FileListView(vm: AppViewModel) {
@@ -321,21 +322,21 @@ private fun FileListView(vm: AppViewModel) {
     if (s != null) {
         when {
             s.loading && list.isEmpty() -> { Spinner(Modifier.fillMaxSize()); return }
-            s.q.isBlank() -> { StateView(Icons2.search, "Введите часть имени файла или папки."); return }
-            list.isEmpty() -> { StateView(Icons2.search, "Ничего не найдено", "По запросу «${s.q}» файлов нет. Проверьте написание или поищите выше по дереву."); return }
+            s.q.isBlank() -> { StateView(Icons2.search, Str.s(R.string.s_vvedite_chast_imeni_fayla_ili)); return }
+            list.isEmpty() -> { StateView(Icons2.search, Str.s(R.string.s_nichego_ne_naydeno), Str.f(R.string.s_po_zaprosu_faylov_net_proverte, s.q)); return }
         }
     } else {
         when {
             vm.loading && vm.entries.isEmpty() -> { Spinner(Modifier.fillMaxSize()); return }
             vm.error != null -> {
-                StateView(Icons2.lock, "Папка недоступна", vm.error) { GhostButton("Назад", { vm.up() }) }
+                StateView(Icons2.lock, Str.s(R.string.s_papka_nedostupna), vm.error) { GhostButton(Str.s(R.string.s_nazad), { vm.up() }) }
                 return
             }
             list.isEmpty() -> {
                 StateView(
-                    Icons2.folderFilled, "Здесь пусто",
-                    if (vm.entries.isNotEmpty()) "В папке только скрытые файлы. Включите их показ в настройках (шестерёнка)."
-                    else "Создайте папку или файл кнопкой «+», либо вставьте скопированное.",
+                    Icons2.folderFilled, Str.s(R.string.s_zdes_pusto),
+                    if (vm.entries.isNotEmpty()) Str.s(R.string.s_v_papke_tolko_skrytye_fayly)
+                    else Str.s(R.string.s_sozdayte_papku_ili_fayl_knopkoy),
                 )
                 return
             }
@@ -350,7 +351,7 @@ private fun FileListView(vm: AppViewModel) {
     Column(Modifier.fillMaxSize()) {
         if (s != null) {
             Text(
-                "${list.size} ${plural(list.size, "результат", "результата", "результатов")}" + if (s.truncated) " · показаны первые, уточните запрос" else "",
+                meta("${list.size} ${Str.p(R.plurals.word_result, list.size)}", if (s.truncated) Str.s(R.string.search_truncated) else null),
                 color = fd.muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
@@ -359,7 +360,7 @@ private fun FileListView(vm: AppViewModel) {
             DisposableEffect(key) { onDispose { vm.scrollMemo[key] = state.firstVisibleItemIndex } }
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(104.dp), state = state, modifier = Modifier.weight(1f),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 gridItems(list, key = { it.path }) { e -> GridItem(e, e.path in vm.selection, onTap, onLong) }
@@ -367,7 +368,7 @@ private fun FileListView(vm: AppViewModel) {
         } else {
             val state = remember(key) { LazyListState(vm.scrollMemo[key] ?: 0) }
             DisposableEffect(key) { onDispose { vm.scrollMemo[key] = state.firstVisibleItemIndex } }
-            LazyColumn(Modifier.weight(1f), state = state, contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 88.dp)) {
+            LazyColumn(Modifier.weight(1f), state = state, contentPadding = PaddingValues(bottom = 88.dp)) {
                 items(list, key = { it.path }) { e -> ListItem(e, e.path in vm.selection, selecting, onTap, onLong, showPath = s != null) }
             }
         }
@@ -385,8 +386,10 @@ private fun Lead(e: FileEntry, size: Int) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ListItem(e: FileEntry, selected: Boolean, selecting: Boolean, onTap: (FileEntry) -> Unit, onLong: (FileEntry) -> Unit, showPath: Boolean) {
-    val sub = if (e.dir) "${e.count} ${itemsWord(e.count)}" + (if (e.mtime > 0) " · ${formatDate(e.mtime)}" else "")
-    else formatSize(e.size) + (if (e.mtime > 0) " · ${formatDate(e.mtime)}" else "")
+    val sub = meta(
+        if (e.dir) "${e.count} ${Str.p(R.plurals.word_item, e.count)}" else formatSize(e.size),
+        e.mtime.takeIf { it > 0 }?.let { formatDate(it) },
+    )
     Row(
         Modifier.fillMaxWidth().background(if (selected) fd.manila.copy(alpha = 0.12f) else Color.Transparent)
             .combinedClickable(onClick = { onTap(e) }, onLongClick = { onLong(e) })
@@ -398,7 +401,7 @@ private fun ListItem(e: FileEntry, selected: Boolean, selecting: Boolean, onTap:
         Column(Modifier.weight(1f)) {
             Text(e.name, color = fd.text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(sub, color = fd.muted, fontSize = 13.sp, maxLines = 1)
-            if (showPath) Text(dev.filedeck.app.parentOf(e.path), color = fd.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (showPath) Text(parentOf(e.path), color = fd.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (selecting) SelectCheck(selected)
     }
@@ -419,11 +422,9 @@ private fun GridItem(e: FileEntry, selected: Boolean, onTap: (FileEntry) -> Unit
             if (selected) Box(Modifier.align(Alignment.TopEnd)) { SelectCheck(true) }
         }
         Text(e.name, color = fd.text, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
-        Text(if (e.dir) "${e.count} ${itemsWord(e.count)}" else formatSize(e.size), color = fd.muted, fontSize = 11.sp)
+        Text(if (e.dir) "${e.count} ${Str.p(R.plurals.word_item, e.count)}" else formatSize(e.size), color = fd.muted, fontSize = 11.sp)
     }
 }
-
-// ======================================================================== нижняя панель
 
 @Composable
 private fun Dock(vm: AppViewModel, selecting: Boolean) {
@@ -433,29 +434,29 @@ private fun Dock(vm: AppViewModel, selecting: Boolean) {
     ) {
         if (selecting) {
             @Composable
-            fun act(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
+            fun act(icon: ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
                 Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(icon, label, tint = if (danger) fd.danger else fd.text)
                     Text(label, color = if (danger) fd.danger else fd.muted, fontSize = 11.sp, maxLines = 1)
                 }
             }
-            act(Icons2.copy, "Копировать") { vm.toClipboard(ClipMode.COPY) }
-            act(Icons2.cut, "Вырезать") { vm.toClipboard(ClipMode.MOVE) }
-            act(Icons2.share, "Поделиться") { vm.shareSelected() }
-            act(Icons2.delete, "Удалить", true) { vm.deletePaths(vm.selection.toList()) }
-            act(Icons2.more, "Ещё") { vm.moreForSelection() }
+            act(Icons2.copy, Str.s(R.string.action_copy)) { vm.toClipboard(ClipMode.COPY) }
+            act(Icons2.cut, Str.s(R.string.s_vyrezat)) { vm.toClipboard(ClipMode.MOVE) }
+            act(Icons2.share, Str.s(R.string.action_share)) { vm.shareSelected() }
+            act(Icons2.delete, Str.s(R.string.action_delete), true) { vm.deletePaths(vm.selection.toList()) }
+            act(Icons2.more, Str.s(R.string.s_esche)) { vm.moreForSelection() }
         } else {
             val c = vm.clip ?: return
             Icon(if (c.mode == ClipMode.MOVE) Icons2.cut else Icons2.copy, null, tint = fd.muted, modifier = Modifier.padding(start = 8.dp))
             Text(
-                (if (c.mode == ClipMode.MOVE) "Перенести" else "Скопировать") + ": ${c.paths.size}",
+                (if (c.mode == ClipMode.MOVE) Str.s(R.string.s_perenesti) else Str.s(R.string.s_skopirovat)) + ": ${c.paths.size}",
                 color = fd.text, modifier = Modifier.weight(1f).padding(start = 8.dp),
             )
-            androidx.compose.material3.TextButton(onClick = { vm.cancelPaste() }) { Text("Отмена", color = fd.muted) }
-            androidx.compose.material3.Button(
+            TextButton(onClick = { vm.cancelPaste() }) { Text(Str.s(R.string.s_otmena), color = fd.muted) }
+            Button(
                 onClick = { vm.paste() },
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = fd.manila, contentColor = fd.onManila),
-            ) { Text("Вставить сюда") }
+                colors = ButtonDefaults.buttonColors(containerColor = fd.manila, contentColor = fd.onManila),
+            ) { Text(Str.s(R.string.s_vstavit_syuda)) }
         }
     }
 }
