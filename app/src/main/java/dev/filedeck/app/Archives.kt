@@ -133,27 +133,7 @@ class ArchiveService {
         try {
             val sink = ArchiveSink.open(fmt, target, if (usePassword) password else null, level)
             opened = sink
-            var done = 0L
-            val buf = ByteArray(ArchiveIO.BUF)
-            for (item in items) {
-                host.checkCancel()
-                if (item.dir) {
-                    sink.dir(item.name, item.file.lastModified())
-                    continue
-                }
-                sink.begin(item.name, item.file)
-                FileInputStream(item.file).use { input ->
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n <= 0) break
-                        sink.write(buf, 0, n)
-                        done += n
-                        host.checkCancel()
-                        host.emit("create", if (total > 0) done.toDouble() / total else 0.0, item.name, false)
-                    }
-                }
-                sink.end()
-            }
+            writeItems(host, sink, items, total)
             sink.close()
             opened = null
         } catch (t: Throwable) {
@@ -167,6 +147,30 @@ class ArchiveService {
         }
         host.emit("create", 1.0, null, true)
         return ArchiveCreated(target.absolutePath, target.length(), items.size)
+    }
+
+    private fun writeItems(host: ArchiveHost, sink: ArchiveSink, items: List<ArchiveItem>, total: Long) {
+        var done = 0L
+        val buf = ByteArray(ArchiveIO.BUF)
+        for (item in items) {
+            host.checkCancel()
+            if (item.dir) {
+                sink.dir(item.name, item.file.lastModified())
+                continue
+            }
+            sink.begin(item.name, item.file)
+            FileInputStream(item.file).use { input ->
+                while (true) {
+                    val n = input.read(buf)
+                    if (n <= 0) break
+                    sink.write(buf, 0, n)
+                    done += n
+                    host.checkCancel()
+                    host.emit("create", if (total > 0) done.toDouble() / total else 0.0, item.name, false)
+                }
+            }
+            sink.end()
+        }
     }
 
     private fun collect(f: File, name: String, out: MutableList<ArchiveItem>, skipCanon: String): Long {
@@ -270,7 +274,6 @@ class ArchiveService {
             if (!root.mkdirs()) throw ArchiveError("DEST", Str.s(R.string.error_archive_extract_dest))
             createdRoot = true
         }
-        val topMap = HashMap<String, String>()
         val created = ArrayList<File>()
         var count = 0L
         try {
@@ -279,43 +282,7 @@ class ArchiveService {
                 extractRar(f, root, password)
                 count = countFiles(root)
             } else {
-                val rootCanon = root.canonicalPath
-                ArchiveSource.open(f, fmt, password).use { src ->
-                    val buf = ByteArray(ArchiveIO.BUF)
-                    var e = src.next()
-                    while (e != null) {
-                        host.checkCancel()
-                        val name = cleanName(e.name)
-                        if (!e.link && name != null && wanted(name, only)) {
-                            val out = mapTarget(root, name, here, topMap, created)
-                            val canon = out.canonicalPath
-                            val inside = canon == rootCanon || canon.startsWith(rootCanon + File.separator)
-                            if (inside) { // иначе — Zip Slip, пропускаем
-                                if (e.dir) {
-                                    out.mkdirs()
-                                } else {
-                                    val parent = out.parentFile
-                                    if (parent != null && !parent.isDirectory && !parent.mkdirs()) {
-                                        throw ArchiveError("DEST", Str.f(R.string.error_archive_mkdir, parent.name))
-                                    }
-                                    BufferedOutputStream(FileOutputStream(out), ArchiveIO.BUF).use { os ->
-                                        val input = src.stream()
-                                        while (true) {
-                                            val n = input.read(buf)
-                                            if (n <= 0) break
-                                            os.write(buf, 0, n)
-                                            host.checkCancel()
-                                            host.emit("extract", src.fraction(), name, false)
-                                        }
-                                    }
-                                    if (e.mtime > 0) out.setLastModified(e.mtime)
-                                    count++
-                                }
-                            }
-                        }
-                        e = src.next()
-                    }
-                }
+                count = extractStream(host, f, fmt, password, root, here, only, created)
             }
         } catch (t: Throwable) {
             if (createdRoot) FsUtil.deleteRecursive(root) else for (c in created) FsUtil.deleteRecursive(c)
@@ -323,6 +290,64 @@ class ArchiveService {
         }
         host.emit("extract", 1.0, null, true)
         return ArchiveExtracted(root.absolutePath, count)
+    }
+
+    private fun extractStream(
+        host: ArchiveHost,
+        archive: File,
+        fmt: ArchiveFormat,
+        password: String,
+        root: File,
+        here: Boolean,
+        only: Set<String>,
+        created: MutableList<File>,
+    ): Long {
+        val rootCanon = root.canonicalPath
+        val topMap = HashMap<String, String>()
+        var count = 0L
+        ArchiveSource.open(archive, fmt, password).use { src ->
+            val buf = ByteArray(ArchiveIO.BUF)
+            var e = src.next()
+            while (e != null) {
+                host.checkCancel()
+                val name = cleanName(e.name)
+                if (!e.link && name != null && wanted(name, only)) {
+                    val out = mapTarget(root, name, here, topMap, created)
+                    if (isInside(out, rootCanon) && writeEntry(host, src, e, out, name, buf)) count++
+                }
+                e = src.next()
+            }
+        }
+        return count
+    }
+
+    private fun isInside(out: File, rootCanon: String): Boolean {
+        val canon = out.canonicalPath
+        return canon == rootCanon || canon.startsWith(rootCanon + File.separator)
+    }
+
+    /** true — записан файл, false — создана папка. */
+    private fun writeEntry(host: ArchiveHost, src: ArchiveSource, e: ArchiveEntry, out: File, name: String, buf: ByteArray): Boolean {
+        if (e.dir) {
+            out.mkdirs()
+            return false
+        }
+        val parent = out.parentFile
+        if (parent != null && !parent.isDirectory && !parent.mkdirs()) {
+            throw ArchiveError("DEST", Str.f(R.string.error_archive_mkdir, parent.name))
+        }
+        BufferedOutputStream(FileOutputStream(out), ArchiveIO.BUF).use { os ->
+            val input = src.stream()
+            while (true) {
+                val n = input.read(buf)
+                if (n <= 0) break
+                os.write(buf, 0, n)
+                host.checkCancel()
+                host.emit("extract", src.fraction(), name, false)
+            }
+        }
+        if (e.mtime > 0) out.setLastModified(e.mtime)
+        return true
     }
 
     private fun countFiles(dir: File): Long {

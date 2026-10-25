@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,6 +32,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.filedeck.app.FileKind
@@ -53,15 +54,18 @@ fun FdIconButton(icon: ImageVector, desc: String, onClick: () -> Unit, tint: Col
 
 @Composable
 fun FdBar(title: String, onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
+    val size = when {
+        title.length <= 22 -> 20
+        title.length <= 40 -> 17
+        else -> 15
+    }
     Row(
-        Modifier.fillMaxWidth().background(fd.chrome).statusBarsPadding().height(56.dp).padding(horizontal = 4.dp),
+        Modifier.fillMaxWidth().background(fd.chrome).statusBarsPadding().heightIn(min = 56.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         FdIconButton(Icons2.back, Str.s(R.string.s_nazad), onBack)
-        Text(
-            title, color = fd.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-        )
+        NameText(title, Modifier.weight(1f).padding(horizontal = 4.dp), size = size, weight = FontWeight.SemiBold)
         actions()
     }
 }
@@ -76,7 +80,7 @@ fun BottomAction(content: @Composable () -> Unit) {
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, danger: Boolean = false) {
     Button(
-        onClick = onClick, enabled = enabled, modifier = modifier.height(50.dp),
+        onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 50.dp),
         shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (danger) fd.danger else fd.manila,
@@ -89,7 +93,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 @Composable
 fun GhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     OutlinedButton(
-        onClick = onClick, enabled = enabled, modifier = modifier.height(50.dp),
+        onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 50.dp),
         shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, fd.line),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = fd.text, disabledContentColor = fd.muted),
     ) { Text(text) }
@@ -138,7 +142,7 @@ fun Group(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun RowText(label: String, hint: String?, modifier: Modifier, danger: Boolean = false) {
+internal fun RowText(label: String, hint: String?, modifier: Modifier, danger: Boolean = false) {
     Column(modifier) {
         Text(label, color = if (danger) fd.danger else fd.text, fontSize = 16.sp)
         if (!hint.isNullOrEmpty()) Text(hint, color = fd.muted, fontSize = 13.sp)
@@ -203,7 +207,8 @@ fun KindBadge(kind: FileKind, size: Int = 44) {
         Modifier.size(size.dp).clip(RoundedCornerShape(12.dp)).background(c.copy(alpha = 0.16f)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(if (kind == FileKind.Folder) Icons2.folderFilled else kindIcon(kind), null, tint = c, modifier = Modifier.size((size * 0.55f).dp))
+        Icon(if (kind == FileKind.Folder) Icons2.folderFilled else kindIcon(kind), null, tint = c,
+            modifier = Modifier.size((size * 0.55f).dp))
     }
 }
 
@@ -247,11 +252,18 @@ fun ItemRow(
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, color = fd.text, fontSize = titleSize.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                NameText(title, Modifier.weight(1f, fill = false), size = titleSize)
                 titleExtra?.invoke()
             }
-            lines.forEach { Text(it, color = fd.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            lines.forEach { MetaText(it) }
         }
         end?.invoke()
+    }
+}
+
+@Composable
+fun SelectAllButton(all: Boolean, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(Str.s(if (all) R.string.s_snyat_vse else R.string.s_vybrat_vse), color = fd.manila)
     }
 }

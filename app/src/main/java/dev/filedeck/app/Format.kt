@@ -27,8 +27,8 @@ fun formatDate(ms: Long, withTime: Boolean = false): String {
     val d = Calendar.getInstance().apply { timeInMillis = ms }
     val now = Calendar.getInstance()
     val sameYear = d.get(Calendar.YEAR) == now.get(Calendar.YEAR)
-    var s = "${d.get(Calendar.DAY_OF_MONTH)} ${Str.array(R.array.months_short).getOrElse(d.get(Calendar.MONTH)) { (d.get(Calendar.MONTH) + 1).toString() }}" +
-        (if (sameYear) "" else " ${d.get(Calendar.YEAR)}")
+    val month = Str.array(R.array.months_short).getOrElse(d.get(Calendar.MONTH)) { (d.get(Calendar.MONTH) + 1).toString() }
+    var s = "${d.get(Calendar.DAY_OF_MONTH)} $month" + (if (sameYear) "" else " ${d.get(Calendar.YEAR)}")
     if (withTime) {
         s += String.format(Locale.ROOT, ", %02d:%02d", d.get(Calendar.HOUR_OF_DAY), d.get(Calendar.MINUTE))
     }

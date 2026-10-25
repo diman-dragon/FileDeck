@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,7 +28,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -50,14 +49,16 @@ fun ImageScreen(vm: AppViewModel, o: Overlay.Image) {
         }
         if (chrome && cur != null) {
             Row(
-                Modifier.fillMaxWidth().background(Color(0x99000000)).statusBarsPadding().height(56.dp).padding(horizontal = 4.dp),
+                Modifier.fillMaxWidth().background(Color(0x99000000)).statusBarsPadding().heightIn(min = 56.dp)
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 FdIconButton(Icons2.back, Str.s(R.string.s_nazad), { vm.closeOverlay(o) }, tint = Color.White)
                 Column(Modifier.weight(1f)) {
-                    Text(cur.name, color = Color.White, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    NameText(cur.name, size = 16, color = Color.White)
                     Text(
-                        meta(cur.size.takeIf { it > 0 }?.let { formatSize(it) }, cur.mtime.takeIf { it > 0 }?.let { formatDate(it, true) }) +
+                        meta(cur.size.takeIf { it > 0 }?.let { formatSize(it) },
+                            cur.mtime.takeIf { it > 0 }?.let { formatDate(it, true) }) +
                             "  ${pager.currentPage + 1} / ${o.images.size}",
                         color = Color(0xFFCCCCCC), fontSize = 12.sp,
                     )

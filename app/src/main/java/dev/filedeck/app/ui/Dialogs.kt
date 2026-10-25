@@ -43,7 +43,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.filedeck.app.R
@@ -99,7 +98,8 @@ fun PromptDialogUi(d: Dlg.Prompt) {
     }
     DialogShell(
         d.title, onDismiss = { d.result.complete(null) },
-        confirm = { TextButton(onClick = { d.result.complete(tf.text) }) { Text(d.okText, color = fd.manila, fontWeight = FontWeight.SemiBold) } },
+        confirm = { TextButton(onClick = { d.result.complete(tf.text) }) { Text(d.okText, color = fd.manila,
+            fontWeight = FontWeight.SemiBold) } },
         dismiss = { TextButton(onClick = { d.result.complete(null) }) { Text(Str.s(R.string.s_otmena), color = fd.muted) } },
     ) {
         if (d.text != null) {
@@ -112,7 +112,8 @@ fun PromptDialogUi(d: Dlg.Prompt) {
             visualTransformation = if (d.password && !show) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = if (d.password) KeyboardType.Password else KeyboardType.Text),
             trailingIcon = if (d.password) {
-                { IconButton(onClick = { show = !show }) { Icon(if (show) Icons2.eyeOff else Icons2.eye, Str.s(R.string.s_pokazat), tint = fd.muted) } }
+                { IconButton(onClick = { show = !show }) { Icon(if (show) Icons2.eyeOff else Icons2.eye, Str.s(R.string.s_pokazat),
+                    tint = fd.muted) } }
             } else null,
             isError = d.error.isNotEmpty(),
             modifier = Modifier.fillMaxWidth().focusRequester(focus),
@@ -145,12 +146,13 @@ fun ProgressDialogUi(p: ProgressState) {
         text = {
             Column {
                 if (p.fraction != null) {
-                    LinearProgressIndicator(progress = { p.fraction.coerceIn(0f, 1f) }, color = fd.manila, trackColor = fd.surface3, modifier = Modifier.fillMaxWidth())
+                    LinearProgressIndicator(progress = { p.fraction.coerceIn(0f, 1f) }, color = fd.manila, trackColor = fd.surface3,
+                        modifier = Modifier.fillMaxWidth())
                 } else {
                     LinearProgressIndicator(color = fd.manila, trackColor = fd.surface3, modifier = Modifier.fillMaxWidth())
                 }
                 if (!p.current.isNullOrEmpty()) {
-                    Text(p.current, color = fd.muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+                    MetaText(p.current, Modifier.padding(top = 10.dp), size = 13)
                 }
             }
         },
@@ -166,8 +168,8 @@ fun ProgressDialogUi(p: ProgressState) {
 fun SheetUi(d: Dlg.Sheet, onClose: () -> Unit) {
     ModalBottomSheet(onDismissRequest = { onClose(); d.onCancel?.invoke() }, containerColor = fd.surface2) {
         Column(Modifier.navigationBarsPadding().verticalScroll(rememberScrollState())) {
-            Text(d.title, color = fd.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 20.dp))
-            if (d.subtitle != null) Text(d.subtitle, color = fd.muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp))
+            NameText(d.title, Modifier.padding(horizontal = 20.dp), size = 18, weight = FontWeight.SemiBold)
+            if (d.subtitle != null) MetaText(d.subtitle, Modifier.padding(horizontal = 20.dp), size = 13)
             Spacer(Modifier.height(8.dp))
             d.items.forEach { item ->
                 if (item.divider) {
@@ -224,7 +226,8 @@ fun CreateArchiveDialogUi(d: Dlg.CreateArchive) {
     ) {
         Text(if (d.count == 1) Str.s(R.string.s_odin_obekt) else Str.f(R.string.s_obektov, d.count))
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(value = name, onValueChange = { name = it; err = "" }, singleLine = true, label = { Text(Str.s(R.string.s_imya)) }, isError = err.isNotEmpty(), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = name, onValueChange = { name = it; err = "" }, singleLine = true,
+            label = { Text(Str.s(R.string.s_imya)) }, isError = err.isNotEmpty(), modifier = Modifier.fillMaxWidth())
         if (err.isNotEmpty()) Text(err, color = fd.danger, fontSize = 13.sp)
         Spacer(Modifier.height(10.dp))
         Text(Str.s(R.string.s_format), fontSize = 13.sp)
@@ -246,7 +249,8 @@ fun CreateArchiveDialogUi(d: Dlg.CreateArchive) {
             value = pw, onValueChange = { pw = it }, singleLine = true, enabled = zip,
             label = { Text(if (zip) Str.s(R.string.s_parol_neobyazatelno) else Str.s(R.string.s_parol_est_tolko_u_zip)) },
             visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = { IconButton(onClick = { show = !show }) { Icon(if (show) Icons2.eyeOff else Icons2.eye, Str.s(R.string.s_pokazat_parol), tint = fd.muted) } },
+            trailingIcon = { IconButton(onClick = { show = !show }) { Icon(if (show) Icons2.eyeOff else Icons2.eye,
+                Str.s(R.string.s_pokazat_parol), tint = fd.muted) } },
             modifier = Modifier.fillMaxWidth(),
         )
     }

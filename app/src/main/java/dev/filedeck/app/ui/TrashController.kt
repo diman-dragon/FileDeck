@@ -81,7 +81,8 @@ class TrashController(val vm: AppViewModel) {
             busy = true
             val expected = if (all) items.size else selected.size
             try {
-                val res = vm.withProgress(if (all) Str.s(R.string.s_ochischaem_korzinu) else Str.s(R.string.s_udalyaem), { vm.trashSvc.cancel() }) { update ->
+                val res = vm.withProgress(if (all) Str.s(R.string.s_ochischaem_korzinu) else Str.s(R.string.s_udalyaem),
+                    { vm.trashSvc.cancel() }) { update ->
                     val cb: (TrashProgress) -> Unit = { update(it.fraction, it.current) }
                     if (all) vm.trashSvc.empty(cb) else vm.trashSvc.remove(selected, cb)
                 }

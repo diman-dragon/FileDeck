@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,7 +55,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -107,7 +104,8 @@ private fun TopBar(vm: AppViewModel) {
             when {
                 searching -> FdIconButton(Icons2.back, Str.s(R.string.s_zakryt_poisk), { vm.exitSearch() })
                 path != null && vm.perm == true -> FdIconButton(Icons2.back, Str.s(R.string.s_naverh), { vm.up() })
-                else -> Box(Modifier.padding(start = 12.dp, end = 8.dp).size(28.dp).clip(RoundedCornerShape(8.dp)).background(fd.manila), contentAlignment = Alignment.Center) {
+                else -> Box(Modifier.padding(start = 12.dp, end = 8.dp).size(28.dp).clip(RoundedCornerShape(8.dp)).background(fd.manila),
+                    contentAlignment = Alignment.Center) {
                     Text("D", color = fd.onManila, fontWeight = FontWeight.ExtraBold)
                 }
             }
@@ -118,7 +116,8 @@ private fun TopBar(vm: AppViewModel) {
         when {
             n > 0 -> Row(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 FdIconButton(Icons2.close, Str.s(R.string.s_otmenit_vybor), { vm.clearSelection() })
-                Text("$n ${Str.p(R.plurals.word_selected, n)}", color = fd.text, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("$n ${Str.p(R.plurals.word_selected, n)}", color = fd.text, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f))
                 FdIconButton(Icons2.selectAll, Str.s(R.string.s_vybrat_vse), { vm.selectAll() })
             }
             searching -> SearchField(vm)
@@ -165,7 +164,12 @@ private fun Crumbs(vm: AppViewModel, path: String, modifier: Modifier) {
     LaunchedEffect(path) { scroll.scrollTo(scroll.maxValue) }
     Row(modifier.horizontalScroll(scroll).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         fun tab(label: String, target: String, current: Boolean) = Pair(label, Pair(target, current))
-        val tabs = mutableListOf(tab(if (root == null) "/" else if (root.primary) Str.s(R.string.storage_short_internal) else Str.s(R.string.storage_sd), base.ifEmpty { "/" }, parts.isEmpty()))
+        val rootLabel = when {
+            root == null -> "/"
+            root.primary -> Str.s(R.string.storage_short_internal)
+            else -> Str.s(R.string.storage_sd)
+        }
+        val tabs = mutableListOf(tab(rootLabel, base.ifEmpty { "/" }, parts.isEmpty()))
         var acc = base
         parts.forEachIndexed { i, p ->
             acc = joinPath(acc, p)
@@ -210,12 +214,14 @@ private fun Content(vm: AppViewModel) {
 
 @Composable
 private fun PermissionView(vm: AppViewModel) {
-    Column(Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+    Column(Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center) {
         Box(Modifier.size(72.dp).clip(CircleShape).background(fd.manila.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
             Icon(Icons2.lock, null, tint = fd.manila, modifier = Modifier.size(34.dp))
         }
         Spacer(Modifier.height(20.dp))
-        Text(Str.s(R.string.s_nuzhen_dostup_ko_vsem_faylam), color = fd.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        Text(Str.s(R.string.s_nuzhen_dostup_ko_vsem_faylam), color = fd.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Text(
             Str.s(R.string.s_filedeck_pokazyvaet_i_menyaet_fayly),
@@ -243,7 +249,8 @@ private fun HomeView(vm: AppViewModel) {
             vm.roots.forEach { StorageCard(it) { vm.go(it.path) } }
         }
         Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ToolCard(Str.s(R.string.s_ochistka), Str.s(R.string.s_dublikaty_musor_pustye_papki), Icons2.sparkle, true, Modifier.weight(1f)) { vm.openCleaner() }
+            ToolCard(Str.s(R.string.s_ochistka), Str.s(R.string.s_dublikaty_musor_pustye_papki), Icons2.sparkle, true,
+                Modifier.weight(1f)) { vm.openCleaner() }
             ToolCard(Str.s(R.string.s_korzina), vm.trashLabel(), Icons2.delete, false, Modifier.weight(1f)) { vm.openTrash() }
         }
         SectionTitle(Str.s(R.string.s_bystryy_dostup))
@@ -252,14 +259,8 @@ private fun HomeView(vm: AppViewModel) {
             QUICK.chunked(3).forEach { rowItems ->
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     rowItems.forEach { (dir, label, icon) ->
-                        Column(
-                            Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(fd.surface2)
-                                .clickable { vm.go(joinPath(root.path, dir)) }.padding(vertical = 16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
+                        Tile(label, null, false, { vm.go(joinPath(root.path, dir)) }, Modifier.weight(1f), square = false) {
                             Icon(icon, null, tint = fd.manila, modifier = Modifier.size(26.dp))
-                            Spacer(Modifier.height(6.dp))
-                            Text(label, color = fd.text, fontSize = 13.sp)
                         }
                     }
                 }
@@ -316,7 +317,8 @@ private fun FileListView(vm: AppViewModel) {
         when {
             s.loading && list.isEmpty() -> { Spinner(Modifier.fillMaxSize()); return }
             s.q.isBlank() -> { StateView(Icons2.search, Str.s(R.string.s_vvedite_chast_imeni_fayla_ili)); return }
-            list.isEmpty() -> { StateView(Icons2.search, Str.s(R.string.s_nichego_ne_naydeno), Str.f(R.string.s_po_zaprosu_faylov_net_proverte, s.q)); return }
+            list.isEmpty() -> { StateView(Icons2.search, Str.s(R.string.s_nichego_ne_naydeno),
+                Str.f(R.string.s_po_zaprosu_faylov_net_proverte, s.q)); return }
         }
     } else {
         when {
@@ -344,7 +346,8 @@ private fun FileListView(vm: AppViewModel) {
     Column(Modifier.fillMaxSize()) {
         if (s != null) {
             Text(
-                meta("${list.size} ${Str.p(R.plurals.word_result, list.size)}", if (s.truncated) Str.s(R.string.search_truncated) else null),
+                meta("${list.size} ${Str.p(R.plurals.word_result, list.size)}",
+                    if (s.truncated) Str.s(R.string.search_truncated) else null),
                 color = fd.muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
@@ -372,12 +375,14 @@ private fun FileListView(vm: AppViewModel) {
 private fun Lead(e: FileEntry, size: Int) {
     val kind = e.kind()
     if (kind == FileKind.Image && !e.dir) {
-        AsyncImage(model = File(e.path), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size.dp).clip(RoundedCornerShape(12.dp)))
+        AsyncImage(model = File(e.path), contentDescription = null, contentScale = ContentScale.Crop,
+            modifier = Modifier.size(size.dp).clip(RoundedCornerShape(12.dp)))
     } else KindBadge(kind, size)
 }
 
 @Composable
-private fun ListItem(e: FileEntry, selected: Boolean, selecting: Boolean, onTap: (FileEntry) -> Unit, onLong: (FileEntry) -> Unit, showPath: Boolean) {
+private fun ListItem(e: FileEntry, selected: Boolean, selecting: Boolean, onTap: (FileEntry) -> Unit, onLong: (FileEntry) -> Unit,
+    showPath: Boolean) {
     val sub = meta(
         if (e.dir) "${e.count} ${Str.p(R.plurals.word_item, e.count)}" else formatSize(e.size),
         e.mtime.takeIf { it > 0 }?.let { formatDate(it) },
@@ -394,22 +399,18 @@ private fun ListItem(e: FileEntry, selected: Boolean, selecting: Boolean, onTap:
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GridItem(e: FileEntry, selected: Boolean, onTap: (FileEntry) -> Unit, onLong: (FileEntry) -> Unit) {
-    Column(
-        Modifier.clip(RoundedCornerShape(14.dp)).background(if (selected) fd.manila.copy(alpha = 0.18f) else fd.surface2)
-            .combinedClickable(onClick = { onTap(e) }, onLongClick = { onLong(e) }).padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
-            if (e.kind() == FileKind.Image && !e.dir) {
-                AsyncImage(model = File(e.path), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)))
-            } else KindBadge(e.kind(), 56)
-            if (selected) Box(Modifier.align(Alignment.TopEnd)) { SelectCheck(true) }
+    val sub = if (e.dir) "${e.count} ${Str.p(R.plurals.word_item, e.count)}" else formatSize(e.size)
+    Tile(e.name, sub, selected, { onTap(e) }, onLongClick = { onLong(e) }) {
+        if (e.kind() == FileKind.Image && !e.dir) {
+            AsyncImage(
+                model = File(e.path), contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+            )
+        } else {
+            KindBadge(e.kind(), 56)
         }
-        Text(e.name, color = fd.text, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
-        Text(if (e.dir) "${e.count} ${Str.p(R.plurals.word_item, e.count)}" else formatSize(e.size), color = fd.muted, fontSize = 11.sp)
     }
 }
 
@@ -422,9 +423,10 @@ private fun Dock(vm: AppViewModel, selecting: Boolean) {
         if (selecting) {
             @Composable
             fun act(icon: ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(icon, label, tint = if (danger) fd.danger else fd.text)
-                    Text(label, color = if (danger) fd.danger else fd.muted, fontSize = 11.sp, maxLines = 1)
+                    NameText(label, size = 11, color = if (danger) fd.danger else fd.muted, center = true)
                 }
             }
             act(Icons2.copy, Str.s(R.string.action_copy)) { vm.toClipboard(ClipMode.COPY) }

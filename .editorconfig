@@ -10,3 +10,6 @@ trim_trailing_whitespace = true
 
 [*.{gradle,xml}]
 indent_size = 4
+
+[*.{kt,kts,java}]
+max_line_length = 140

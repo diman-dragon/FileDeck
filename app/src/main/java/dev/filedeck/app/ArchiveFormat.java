@@ -34,7 +34,9 @@ enum ArchiveFormat {
             return ArchiveFormat.UNKNOWN;
         }
         if (n >= 4 && b[0] == 'P' && b[1] == 'K' && b[2] == 3 && b[3] == 4) return ArchiveFormat.ZIP;
-        if (n >= 6 && (b[0] & 0xFF) == 0x37 && (b[1] & 0xFF) == 0x7A && (b[2] & 0xFF) == 0xBC && (b[3] & 0xFF) == 0xAF) return ArchiveFormat.SEVENZ;
+        if (n >= 6 && (b[0] & 0xFF) == 0x37 && (b[1] & 0xFF) == 0x7A && (b[2] & 0xFF) == 0xBC && (b[3] & 0xFF) == 0xAF) {
+            return ArchiveFormat.SEVENZ;
+        }
         if (n >= 4 && b[0] == 'R' && b[1] == 'a' && b[2] == 'r' && b[3] == '!') return ArchiveFormat.RAR;
         if (n >= 2 && (b[0] & 0xFF) == 0x1F && (b[1] & 0xFF) == 0x8B) return ArchiveFormat.GZ;
         if (n >= 3 && b[0] == 'B' && b[1] == 'Z' && b[2] == 'h') return ArchiveFormat.BZ2;
@@ -85,7 +87,8 @@ enum ArchiveFormat {
 
     static String stripExtension(String name) {
         String lower = name.toLowerCase(Locale.ROOT);
-        String[] exts = { ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".tbz2", ".tbz", ".txz", ".zip", ".7z", ".rar", ".tar", ".gz", ".bz2", ".xz", ".jar", ".cbz" };
+        String[] exts = { ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".tbz2", ".tbz", ".txz", ".zip", ".7z", ".rar", ".tar", ".gz", ".bz2",
+            ".xz", ".jar", ".cbz" };
         for (String e : exts) {
             if (lower.endsWith(e) && name.length() > e.length()) return name.substring(0, name.length() - e.length());
         }

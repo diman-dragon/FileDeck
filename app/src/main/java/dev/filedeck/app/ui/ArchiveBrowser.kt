@@ -113,7 +113,8 @@ class ArchiveBrowserController(val vm: AppViewModel, val entry: FileEntry) {
                 is Outcome.Err -> {
                     if (isPasswordError(res.code)) {
                         val typed = vm.prompt(
-                            Str.s(R.string.s_parol_arhiva), text = Str.s(R.string.s_imena_faylov_zashifrovany), password = true, okText = Str.s(R.string.s_otkryt),
+                            Str.s(R.string.s_parol_arhiva), text = Str.s(R.string.s_imena_faylov_zashifrovany), password = true,
+                                okText = Str.s(R.string.s_otkryt),
                             error = if (res.code == "WRONG_PASSWORD") Str.s(R.string.s_nevernyy_parol) else "",
                         )
                         if (typed.isNullOrEmpty()) {
@@ -152,7 +153,8 @@ class ArchiveBrowserController(val vm: AppViewModel, val entry: FileEntry) {
             if (only.isNotEmpty()) Str.f(R.string.s_raspakovat_vybrannoe, only.size) else Str.s(R.string.s_raspakovat_vse),
             null,
             buildList {
-                add(SheetItem(Icons2.folder, Str.f(R.string.s_v_papku, archiveBase(entry.name)), Str.s(R.string.s_rekomenduetsya)) { run("folder", only) })
+                add(SheetItem(Icons2.folder, Str.f(R.string.s_v_papku, archiveBase(entry.name)),
+                    Str.s(R.string.s_rekomenduetsya)) { run("folder", only) })
                 if (d.format != "RAR") add(SheetItem(Icons2.download, Str.s(R.string.s_syuda_ryadom_s_arhivom)) { run("here", only) })
             },
         )

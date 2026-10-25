@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -32,23 +31,26 @@ fun TrashScreen(c: TrashController) {
     val n = c.selected.size
     Column(Modifier.fillMaxSize().background(fd.surface)) {
         FdBar(Str.s(R.string.s_korzina), onBack = { vm.overlays.removeAll { it is Overlay.Trash && it.c === c } }) {
-            if (c.items.isNotEmpty()) TextButton(onClick = { c.toggleAll() }) { Text(if (n == c.items.size) Str.s(R.string.s_snyat_vse) else Str.s(R.string.s_vybrat_vse), color = fd.manila) }
+            if (c.items.isNotEmpty()) SelectAllButton(n == c.items.size) { c.toggleAll() }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 c.loading -> Spinner(Modifier.fillMaxSize())
-                c.items.isEmpty() -> StateView(Icons2.delete, Str.s(R.string.trash_empty), Str.f(R.string.trash_empty_hint, c.days, Str.p(R.plurals.word_day, c.days)))
+                c.items.isEmpty() -> StateView(Icons2.delete, Str.s(R.string.trash_empty),
+                    Str.f(R.string.trash_empty_hint, c.days, Str.p(R.plurals.word_day, c.days)))
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     item {
                         Text(
-                            meta("${c.items.size} ${Str.p(R.plurals.word_item, c.items.size)}", formatSize(c.bytes), Str.f(R.string.trash_keep, c.days, Str.p(R.plurals.word_day, c.days))),
+                            meta("${c.items.size} ${Str.p(R.plurals.word_item, c.items.size)}", formatSize(c.bytes),
+                                Str.f(R.string.trash_keep, c.days, Str.p(R.plurals.word_day, c.days))),
                             color = fd.muted, fontSize = 13.sp, modifier = Modifier.padding(16.dp),
                         )
                     }
                     items(c.items, key = { it.id }) { t ->
                         val on = t.id in c.selected
                         val kind = kindOf(t.name, t.dir)
-                        val left = maxOf(0L, Math.ceil((t.time + c.days * 86_400_000.0 - System.currentTimeMillis()) / 86_400_000.0).toLong()).toInt()
+                        val left = maxOf(0L,
+                            Math.ceil((t.time + c.days * 86_400_000.0 - System.currentTimeMillis()) / 86_400_000.0).toLong()).toInt()
                         ItemRow(
                             title = t.name,
                             lines = listOf(

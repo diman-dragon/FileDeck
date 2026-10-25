@@ -133,7 +133,8 @@ fun AppViewModel.moreForSelection() {
     if (one != null) items.add(SheetItem(Icons2.info, Str.s(R.string.s_svoystva)) { showProps(one) })
     if (settings.useTrash) {
         items.add(SheetItem(divider = true))
-        items.add(SheetItem(Icons2.delete, Str.s(R.string.s_udalit_navsegda), danger = true) { deletePaths(sel.map { it.path }, permanent = true) })
+        items.add(SheetItem(Icons2.delete, Str.s(R.string.s_udalit_navsegda),
+            danger = true) { deletePaths(sel.map { it.path }, permanent = true) })
     }
     sheet(if (one != null) one.name else Str.f(R.string.s_vybrano, sel.size), null, items)
 }

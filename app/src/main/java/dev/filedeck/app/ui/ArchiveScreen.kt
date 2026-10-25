@@ -34,17 +34,20 @@ fun ArchiveScreen(c: ArchiveBrowserController) {
         FdBar(c.entry.name, onBack = { if (!c.onBack()) c.vm.overlays.removeAll { it is Overlay.ArchiveView && it.c === c } })
         if (d != null) {
             Text(
-                meta(d.format, "${d.count} ${Str.p(R.plurals.word_item, d.count)}", formatSize(d.bytes), if (d.encrypted) Str.s(R.string.archive_password) else null),
+                meta(d.format, "${d.count} ${Str.p(R.plurals.word_item, d.count)}", formatSize(d.bytes),
+                    if (d.encrypted) Str.s(R.string.archive_password) else null),
                 color = fd.muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
             )
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 c.loading -> Spinner(Modifier.fillMaxSize())
-                d != null && !d.listing -> StateView(Icons2.archive, Str.s(R.string.s_spisok_nedostupen), Str.s(R.string.s_soderzhimoe_rar_arhivov_pokazat_nelzya))
+                d != null && !d.listing -> StateView(Icons2.archive, Str.s(R.string.s_spisok_nedostupen),
+                    Str.s(R.string.s_soderzhimoe_rar_arhivov_pokazat_nelzya))
                 else -> Column(Modifier.fillMaxSize()) {
                     val parts = c.cwd.split("/").filter { it.isNotEmpty() }
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).horizontalScroll(rememberScrollState()),
+                        verticalAlignment = Alignment.CenterVertically) {
                         Pill(Str.s(R.string.kind_archive), parts.isEmpty()) { c.cwd = "" }
                         var acc = ""
                         parts.forEachIndexed { i, p ->
@@ -74,7 +77,8 @@ fun ArchiveScreen(c: ArchiveBrowserController) {
                                 )
                             }
                         }
-                        if (d?.truncated == true) Text(Str.s(R.string.s_pokazany_pervye_20_000_zapisey), color = fd.muted, fontSize = 12.sp, modifier = Modifier.padding(12.dp))
+                        if (d?.truncated == true) Text(Str.s(R.string.s_pokazany_pervye_20_000_zapisey), color = fd.muted,
+                            fontSize = 12.sp, modifier = Modifier.padding(12.dp))
                     }
                 }
             }

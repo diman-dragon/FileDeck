@@ -170,7 +170,8 @@ fun AppViewModel.showProps(e: FileEntry) {
     val rows = mutableListOf(
         Str.s(R.string.s_tip) to (kind.label + if (e.dir || ext.isEmpty()) "" else " (.$ext)"),
         Str.s(R.string.s_put) to parentOf(e.path),
-        Str.s(R.string.s_razmer) to if (e.dir) Str.s(R.string.s_schitaem) else Str.f(R.string.size_exact, formatSize(e.size), "%,d".format(e.size)),
+        Str.s(R.string.s_razmer) to if (e.dir) Str.s(R.string.s_schitaem) else Str.f(R.string.size_exact, formatSize(e.size),
+            "%,d".format(e.size)),
     )
     if (e.dir) rows.add(Str.s(R.string.s_soderzhimoe) to Str.s(R.string.s_schitaem))
     rows.add(Str.s(R.string.s_izmenen) to formatDate(e.mtime, true))
@@ -183,7 +184,8 @@ fun AppViewModel.showProps(e: FileEntry) {
                 st.set(Str.s(R.string.s_razmer), formatSize(r.size))
                 st.set(
                     Str.s(R.string.s_soderzhimoe),
-                    Str.f(R.string.props_contents, r.files, Str.p(R.plurals.word_file, r.files), r.folders, Str.p(R.plurals.word_folder, r.folders)),
+                    Str.f(R.string.props_contents, r.files, Str.p(R.plurals.word_file, r.files), r.folders,
+                        Str.p(R.plurals.word_folder, r.folders)),
                 )
             } catch (ex: Exception) {
                 st.set(Str.s(R.string.s_razmer), Str.s(R.string.s_ne_udalos_poschitat))

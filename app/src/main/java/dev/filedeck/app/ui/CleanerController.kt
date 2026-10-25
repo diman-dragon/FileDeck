@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import dev.filedeck.app.CleanCat
 import dev.filedeck.app.CleanSelection
 import dev.filedeck.app.CleanerLogic
+import dev.filedeck.app.CleanerOptions
 import dev.filedeck.app.FileKind
 import dev.filedeck.app.Fs
 import dev.filedeck.app.R
@@ -78,6 +79,10 @@ class CleanerController(val vm: AppViewModel) {
         }
     }
 
+    fun setOptions(change: (CleanerOptions) -> CleanerOptions) {
+        vm.updateSettings { it.copy(cleaner = change(it.cleaner)) }
+    }
+
     fun close() {
         vm.overlays.removeAll { it is Overlay.Cleaner && it.c === this }
     }
@@ -109,13 +114,16 @@ class CleanerController(val vm: AppViewModel) {
         val s = vm.settings
         val describe = meta("${paths.size} ${Str.p(R.plurals.word_item, paths.size)}", formatSize(bytes))
         val mode: String? = if (!s.useTrash) {
-            if (vm.confirm(Str.s(R.string.s_udalit_navsegda_2), Str.f(R.string.s_vosstanovit_budet_nelzya, label, describe), Str.s(R.string.action_delete), true)) "permanent" else null
+            if (vm.confirm(Str.s(R.string.s_udalit_navsegda_2), Str.f(R.string.s_vosstanovit_budet_nelzya, label, describe),
+                Str.s(R.string.action_delete), true)) "permanent" else null
         } else {
             vm.choose(
                 label, describe,
                 listOf(
-                    Choice("trash", Str.s(R.string.action_move_to_trash), Icons2.delete, Str.f(R.string.cleaner_trash_hint, s.trashDays, Str.p(R.plurals.word_day, s.trashDays))),
-                    Choice("permanent", Str.s(R.string.s_udalit_navsegda), Icons2.close, Str.s(R.string.s_srazu_osvobodit_mesto_bez_vosstanovleniy), danger = true),
+                    Choice("trash", Str.s(R.string.action_move_to_trash), Icons2.delete,
+                        Str.f(R.string.cleaner_trash_hint, s.trashDays, Str.p(R.plurals.word_day, s.trashDays))),
+                    Choice("permanent", Str.s(R.string.s_udalit_navsegda), Icons2.close,
+                        Str.s(R.string.s_srazu_osvobodit_mesto_bez_vosstanovleniy), danger = true),
                 ),
             )
         }

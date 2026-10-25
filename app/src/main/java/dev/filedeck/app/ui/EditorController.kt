@@ -54,7 +54,8 @@ class EditorController(val vm: AppViewModel, val entry: FileEntry) {
     fun onBack(): Boolean {
         if (!dirty) return false
         vm.viewModelScope.launch {
-            val discard = vm.confirm(Str.s(R.string.s_zakryt_bez_sohraneniya), Str.s(R.string.s_izmeneniya_v_fayle_budut_poteryany), Str.s(R.string.action_close), danger = true)
+            val discard = vm.confirm(Str.s(R.string.s_zakryt_bez_sohraneniya), Str.s(R.string.s_izmeneniya_v_fayle_budut_poteryany),
+                Str.s(R.string.action_close), danger = true)
             if (discard) close()
         }
         return true

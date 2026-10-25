@@ -169,3 +169,23 @@ object CleanerLogic {
 
     fun safeBytes(r: ScanResult?, sel: CleanSelection): Long = safeCats.sumOf { selBytes(r, sel, it) }
 }
+
+fun CleanerOptions.isEnabled(cat: CleanCat): Boolean = when (cat) {
+    CleanCat.Duplicates -> duplicates
+    CleanCat.Similar -> similar
+    CleanCat.Junk -> junk
+    CleanCat.Apks -> apks
+    CleanCat.Largest -> largest
+    CleanCat.EmptyFolders -> emptyFolders
+    CleanCat.ZeroFiles -> zeroFiles
+}
+
+fun CleanerOptions.with(cat: CleanCat, on: Boolean): CleanerOptions = when (cat) {
+    CleanCat.Duplicates -> copy(duplicates = on)
+    CleanCat.Similar -> copy(similar = on)
+    CleanCat.Junk -> copy(junk = on)
+    CleanCat.Apks -> copy(apks = on)
+    CleanCat.Largest -> copy(largest = on)
+    CleanCat.EmptyFolders -> copy(emptyFolders = on)
+    CleanCat.ZeroFiles -> copy(zeroFiles = on)
+}
