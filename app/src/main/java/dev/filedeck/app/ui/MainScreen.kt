@@ -152,7 +152,7 @@ private fun Switcher(vm: AppViewModel, modifier: Modifier) {
             }
         }
         seg(Str.s(R.string.storage_short_internal), Icons2.drive, cur?.primary == true, false) { vm.switchRoot(false) }
-        seg(Str.s(R.string.start_sd), Icons2.sd, cur != null && !cur.primary, vm.perm == true && !hasSd) { vm.switchRoot(true) }
+        seg(Str.s(R.string.storage_sd), Icons2.sd, cur != null && !cur.primary, vm.perm == true && !hasSd) { vm.switchRoot(true) }
     }
 }
 
@@ -165,20 +165,13 @@ private fun Crumbs(vm: AppViewModel, path: String, modifier: Modifier) {
     LaunchedEffect(path) { scroll.scrollTo(scroll.maxValue) }
     Row(modifier.horizontalScroll(scroll).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         fun tab(label: String, target: String, current: Boolean) = Pair(label, Pair(target, current))
-        val tabs = mutableListOf(tab(if (root == null) "/" else if (root.primary) Str.s(R.string.storage_short_internal) else Str.s(R.string.start_sd), base.ifEmpty { "/" }, parts.isEmpty()))
+        val tabs = mutableListOf(tab(if (root == null) "/" else if (root.primary) Str.s(R.string.storage_short_internal) else Str.s(R.string.storage_sd), base.ifEmpty { "/" }, parts.isEmpty()))
         var acc = base
         parts.forEachIndexed { i, p ->
             acc = joinPath(acc, p)
             tabs.add(tab(p, acc, i == parts.size - 1))
         }
-        tabs.forEach { (label, t) ->
-            Text(
-                label, color = if (t.second) fd.onManila else fd.text, fontSize = 14.sp, maxLines = 1,
-                modifier = Modifier.padding(end = 6.dp).clip(RoundedCornerShape(14.dp))
-                    .background(if (t.second) fd.manila else fd.surface3)
-                    .clickable { vm.go(t.first) }.padding(horizontal = 12.dp, vertical = 6.dp),
-            )
-        }
+        tabs.forEach { (label, t) -> Pill(label, t.second) { vm.go(t.first) } }
     }
 }
 
@@ -383,28 +376,22 @@ private fun Lead(e: FileEntry, size: Int) {
     } else KindBadge(kind, size)
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ListItem(e: FileEntry, selected: Boolean, selecting: Boolean, onTap: (FileEntry) -> Unit, onLong: (FileEntry) -> Unit, showPath: Boolean) {
     val sub = meta(
         if (e.dir) "${e.count} ${Str.p(R.plurals.word_item, e.count)}" else formatSize(e.size),
         e.mtime.takeIf { it > 0 }?.let { formatDate(it) },
     )
-    Row(
-        Modifier.fillMaxWidth().background(if (selected) fd.manila.copy(alpha = 0.12f) else Color.Transparent)
-            .combinedClickable(onClick = { onTap(e) }, onLongClick = { onLong(e) })
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Lead(e, 46)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(e.name, color = fd.text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(sub, color = fd.muted, fontSize = 13.sp, maxLines = 1)
-            if (showPath) Text(parentOf(e.path), color = fd.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        if (selecting) SelectCheck(selected)
-    }
+    ItemRow(
+        title = e.name,
+        lines = listOfNotNull(sub, if (showPath) parentOf(e.path) else null),
+        selected = selected,
+        onClick = { onTap(e) },
+        onLongClick = { onLong(e) },
+        titleSize = 16,
+        lead = { Lead(e, 46) },
+        end = if (selecting) { { SelectCheck(selected) } } else null,
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

@@ -1,26 +1,20 @@
 package dev.filedeck.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.filedeck.app.R
@@ -55,23 +49,17 @@ fun TrashScreen(c: TrashController) {
                         val on = t.id in c.selected
                         val kind = kindOf(t.name, t.dir)
                         val left = maxOf(0L, Math.ceil((t.time + c.days * 86_400_000.0 - System.currentTimeMillis()) / 86_400_000.0).toLong()).toInt()
-                        Row(
-                            Modifier.fillMaxWidth().clickable { c.toggle(t.id) }.background(if (on) fd.manila.copy(alpha = 0.10f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            SelectCheck(on)
-                            Spacer(Modifier.width(10.dp))
-                            KindBadge(kind)
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(t.name, color = fd.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(meta(formatSize(t.size), Str.f(R.string.trash_deleted_on, formatDate(t.time))), color = fd.muted, fontSize = 12.sp)
-                                Text(
-                                    meta(shortLocation(parentOf(t.orig)), Str.f(R.string.trash_left, left, Str.p(R.plurals.word_day, left))),
-                                    color = fd.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
+                        ItemRow(
+                            title = t.name,
+                            lines = listOf(
+                                meta(formatSize(t.size), Str.f(R.string.trash_deleted_on, formatDate(t.time))),
+                                meta(shortLocation(parentOf(t.orig)), Str.f(R.string.trash_left, left, Str.p(R.plurals.word_day, left))),
+                            ),
+                            selected = on,
+                            onClick = { c.toggle(t.id) },
+                            start = { SelectCheck(on) },
+                            lead = { KindBadge(kind) },
+                        )
                     }
                 }
             }

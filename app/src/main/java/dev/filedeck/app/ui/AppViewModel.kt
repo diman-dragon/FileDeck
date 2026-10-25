@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings as AndroidSettings
+import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -123,9 +124,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app), UiHost
     fun rootOf(p: String): StorageRoot? =
         roots.filter { p == it.path || p.startsWith(it.path + "/") }.maxByOrNull { it.path.length }
 
-    private fun hasAccess(): Boolean = Environment.isExternalStorageManager()
-
-    fun hasAccessNow(): Boolean = hasAccess()
+    fun hasAccess(): Boolean = Environment.isExternalStorageManager()
 
     fun checkPermission() {
         viewModelScope.launch {
@@ -136,6 +135,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app), UiHost
                     try {
                         trashSvc.purge(settings.trashDays)
                     } catch (e: Exception) {
+                        Log.w("FileDeck", "trash purge failed", e)
                     }
                     refreshTrash()
                 }
@@ -194,6 +194,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app), UiHost
                 trashCount = r.count
                 trashBytes = r.bytes
             } catch (e: Exception) {
+                Log.w("FileDeck", "trash list failed", e)
             }
         }
     }

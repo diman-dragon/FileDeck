@@ -7,23 +7,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.filedeck.app.R
@@ -51,12 +45,12 @@ fun ArchiveScreen(c: ArchiveBrowserController) {
                 else -> Column(Modifier.fillMaxSize()) {
                     val parts = c.cwd.split("/").filter { it.isNotEmpty() }
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
-                        Crumb(Str.s(R.string.kind_archive), parts.isEmpty()) { c.cwd = "" }
+                        Pill(Str.s(R.string.kind_archive), parts.isEmpty()) { c.cwd = "" }
                         var acc = ""
                         parts.forEachIndexed { i, p ->
                             acc = if (acc.isEmpty()) p else "$acc/$p"
                             val target = acc
-                            Crumb(p, i == parts.size - 1) { c.cwd = target }
+                            Pill(p, i == parts.size - 1) { c.cwd = target }
                         }
                     }
                     val kids = c.children()
@@ -67,22 +61,17 @@ fun ArchiveScreen(c: ArchiveBrowserController) {
                             items(kids, key = { it.path }) { k ->
                                 val on = k.path in c.selected
                                 val kind = kindOf(k.name, k.dir)
-                                Row(
-                                    Modifier.fillMaxWidth().clickable { c.open(k) }.background(if (on) fd.manila.copy(alpha = 0.10f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    KindBadge(kind)
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(k.name, color = fd.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text(
-                                            if (k.dir) meta("${k.count} ${Str.p(R.plurals.word_file, k.count)}", formatSize(k.size))
-                                            else meta(formatSize(k.size), k.mtime.takeIf { it > 0 }?.let { formatDate(it) }),
-                                            color = fd.muted, fontSize = 12.sp,
-                                        )
-                                    }
-                                    Box(Modifier.clickable { c.toggle(k.path) }) { SelectCheck(on) }
-                                }
+                                ItemRow(
+                                    title = k.name,
+                                    lines = listOf(
+                                        if (k.dir) meta("${k.count} ${Str.p(R.plurals.word_file, k.count)}", formatSize(k.size))
+                                        else meta(formatSize(k.size), k.mtime.takeIf { it > 0 }?.let { formatDate(it) }),
+                                    ),
+                                    selected = on,
+                                    onClick = { c.open(k) },
+                                    lead = { KindBadge(kind) },
+                                    end = { Box(Modifier.clickable { c.toggle(k.path) }) { SelectCheck(on) } },
+                                )
                             }
                         }
                         if (d?.truncated == true) Text(Str.s(R.string.s_pokazany_pervye_20_000_zapisey), color = fd.muted, fontSize = 12.sp, modifier = Modifier.padding(12.dp))
@@ -101,13 +90,4 @@ fun ArchiveScreen(c: ArchiveBrowserController) {
             }
         }
     }
-}
-
-@Composable
-private fun Crumb(label: String, current: Boolean, onClick: () -> Unit) {
-    Text(
-        label, color = if (current) fd.onManila else fd.text, fontSize = 14.sp, maxLines = 1,
-        modifier = Modifier.padding(end = 6.dp).clip(RoundedCornerShape(14.dp)).background(if (current) fd.manila else fd.surface3)
-            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp),
-    )
 }

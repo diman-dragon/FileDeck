@@ -1,8 +1,10 @@
 package dev.filedeck.app.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Folder
@@ -201,5 +204,54 @@ fun KindBadge(kind: FileKind, size: Int = 44) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(if (kind == FileKind.Folder) Icons2.folderFilled else kindIcon(kind), null, tint = c, modifier = Modifier.size((size * 0.55f).dp))
+    }
+}
+
+@Composable
+fun Pill(label: String, current: Boolean, onClick: () -> Unit) {
+    Text(
+        label, color = if (current) fd.onManila else fd.text, fontSize = 14.sp, maxLines = 1,
+        modifier = Modifier.padding(end = 6.dp).clip(RoundedCornerShape(14.dp))
+            .background(if (current) fd.manila else fd.surface3)
+            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp),
+    )
+}
+
+/** Строка списка: [start] [lead] заголовок + подписи [end]. Общая для файлов, очистки, корзины и архива. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ItemRow(
+    title: String,
+    lines: List<String>,
+    selected: Boolean,
+    onClick: () -> Unit,
+    lead: @Composable () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    titleSize: Int = 15,
+    start: (@Composable () -> Unit)? = null,
+    titleExtra: (@Composable () -> Unit)? = null,
+    end: (@Composable () -> Unit)? = null,
+) {
+    Row(
+        Modifier.fillMaxWidth()
+            .background(if (selected) fd.manila.copy(alpha = 0.12f) else Color.Transparent)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (start != null) {
+            start()
+            Spacer(Modifier.width(10.dp))
+        }
+        lead()
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, color = fd.text, fontSize = titleSize.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                titleExtra?.invoke()
+            }
+            lines.forEach { Text(it, color = fd.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+        end?.invoke()
     }
 }

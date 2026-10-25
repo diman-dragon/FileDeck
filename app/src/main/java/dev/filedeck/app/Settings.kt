@@ -19,7 +19,7 @@ enum class ThemeMode(@StringRes private val labelRes: Int, @StringRes private va
 enum class StartScreen(@StringRes private val labelRes: Int) {
     HOME(R.string.start_home),
     PRIMARY(R.string.start_primary),
-    SD(R.string.start_sd),
+    SD(R.string.storage_sd),
     ;
 
     val label: String get() = Str.s(labelRes)

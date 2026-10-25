@@ -143,7 +143,7 @@ private fun AboutPage(vm: AppViewModel) {
         }
     }
     SectionTitle(Str.s(R.string.s_dostup_k_faylam))
-    val granted = vm.hasAccessNow()
+    val granted = vm.hasAccess()
     Group {
         LinkRow(if (granted) Str.s(R.string.s_dostup_vydan) else Str.s(R.string.s_dostup_ne_vydan), if (granted) Str.s(R.string.s_filedeck_mozhet_chitat_i_menyat) else Str.s(R.string.s_bez_dostupa_prilozhenie_ne_uvidit)) {
             if (!granted) vm.requestPermission()

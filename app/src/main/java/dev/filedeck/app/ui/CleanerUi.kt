@@ -30,7 +30,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -100,7 +99,7 @@ private fun ColumnScope.SetupView(c: CleanerController) {
             SwitchRow(Str.s(R.string.start_primary), p?.let { Str.f(R.string.s_svobodno_iz, formatSize(it.free), formatSize(it.total)) }, o.primary, p != null) { v -> vm.updateSettings { it.copy(cleaner = it.cleaner.copy(primary = v)) } }
             c.secondary?.let { s ->
                 RowDivider()
-                SwitchRow(Str.s(R.string.start_sd), Str.f(R.string.s_svobodno_iz, formatSize(s.free), formatSize(s.total)), o.sd) { v -> vm.updateSettings { it.copy(cleaner = it.cleaner.copy(sd = v)) } }
+                SwitchRow(Str.s(R.string.storage_sd), Str.f(R.string.s_svobodno_iz, formatSize(s.free), formatSize(s.total)), o.sd) { v -> vm.updateSettings { it.copy(cleaner = it.cleaner.copy(sd = v)) } }
             }
         }
         SectionTitle(Str.s(R.string.s_chto_iskat))
@@ -319,25 +318,25 @@ private fun CleanRowView(c: CleanerController, r: CleanRow, on: Boolean, keepPat
         else -> meta(if (r.w > 0) "${r.w}×${r.h}" else null, formatSize(r.size), r.mtime.takeIf { it > 0 }?.let { formatDate(it) })
     }
     val title = if (c.cat == CleanCat.Apks && !r.label.isNullOrEmpty()) r.label else name
-    Row(
-        Modifier.fillMaxWidth().clickable { c.toggleRow(r.path) }.background(if (on) fd.manila.copy(alpha = 0.10f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SelectCheck(on)
-        Spacer(Modifier.width(10.dp))
-        if (kind == FileKind.Image) {
-            AsyncImage(model = File(r.path), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)))
-        } else KindBadge(kind)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title ?: name, color = fd.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                if (keepPath == r.path) Text(Str.s(R.string.s_ostavit), color = fd.manila, fontSize = 12.sp)
+    ItemRow(
+        title = title ?: name,
+        lines = listOf(sub, where),
+        selected = on,
+        onClick = { c.toggleRow(r.path) },
+        start = { SelectCheck(on) },
+        lead = {
+            if (kind == FileKind.Image) {
+                AsyncImage(model = File(r.path), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)))
+            } else {
+                KindBadge(kind)
             }
-            Text(sub, color = fd.muted, fontSize = 12.sp, maxLines = 1)
-            Text(where, color = fd.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        if (!r.dir) FdIconButton(Icons2.eye, Str.s(R.string.s_otkryt), { c.view(r.path) })
-        FdIconButton(Icons2.folder, Str.s(R.string.s_pokazat_v_papke), { c.locate(r.path) })
-    }
+        },
+        titleExtra = if (keepPath == r.path) {
+            { Text(Str.s(R.string.s_ostavit), color = fd.manila, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp)) }
+        } else null,
+        end = {
+            if (!r.dir) FdIconButton(Icons2.eye, Str.s(R.string.s_otkryt), { c.view(r.path) })
+            FdIconButton(Icons2.folder, Str.s(R.string.s_pokazat_v_papke), { c.locate(r.path) })
+        },
+    )
 }

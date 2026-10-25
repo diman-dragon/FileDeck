@@ -78,7 +78,7 @@
 
     <string name="start_home">Главный экран</string>
     <string name="start_primary">Память телефона</string>
-    <string name="start_sd">SD-карта</string>
+    <string name="storage_sd">SD-карта</string>
 
     <string name="sort_name">По имени</string>
     <string name="sort_date">По дате</string>

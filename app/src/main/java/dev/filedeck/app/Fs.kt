@@ -32,7 +32,7 @@ object Fs {
                 Log.w("FileDeck", "Fs: ошибка проигнорирована", ignored)
             }
             val r = StorageRoot(
-                name = if (primary) Str.s(R.string.storage_internal) else Str.s(R.string.start_sd),
+                name = if (primary) Str.s(R.string.storage_internal) else Str.s(R.string.storage_sd),
                 path = root.absolutePath,
                 primary = primary,
                 total = total,
